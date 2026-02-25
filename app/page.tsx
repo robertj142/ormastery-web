@@ -10,62 +10,133 @@ type Surgeon = {
 };
 
 export default function Home() {
+  const [loading, setLoading] = useState(true);
+  const [isAuthed, setIsAuthed] = useState(false);
+
   const [surgeons, setSurgeons] = useState<Surgeon[]>([]);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
 
   useEffect(() => {
-    fetchSurgeons();
+    // Check current session
+    supabase.auth.getSession().then(({ data }) => {
+      setIsAuthed(!!data.session);
+      setLoading(false);
+      if (data.session) fetchSurgeons();
+    });
+
+    // Listen for auth changes (magic link login will trigger this)
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthed(!!session);
+      if (session) fetchSurgeons();
+      if (!session) setSurgeons([]);
+    });
+
+    return () => {
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   async function fetchSurgeons() {
-    const { data } = await supabase.from("surgeons").select("*");
-    if (data) setSurgeons(data);
+    const { data, error } = await supabase
+      .from("surgeons")
+      .select("id, first_name, last_name")
+      .order("last_name", { ascending: true });
+
+    if (!error && data) setSurgeons(data);
   }
 
   async function addSurgeon() {
-    const user = await supabase.auth.getUser();
-    if (!user.data.user) return alert("Not logged in");
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return;
 
-    await supabase.from("surgeons").insert({
-      user_id: user.data.user.id,
-      first_name: firstName,
-      last_name: lastName,
+    const fn = firstName.trim();
+    const ln = lastName.trim();
+    if (!fn || !ln) return alert("Add first and last name.");
+
+    const { error } = await supabase.from("surgeons").insert({
+      user_id: data.user.id,
+      first_name: fn,
+      last_name: ln,
     });
+
+    if (error) return alert(error.message);
 
     setFirstName("");
     setLastName("");
     fetchSurgeons();
   }
 
+  async function logout() {
+    await supabase.auth.signOut();
+    window.location.href = "/login";
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-sm text-gray-600">
+        Loading…
+      </div>
+    );
+  }
+
+  if (!isAuthed) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="bg-white rounded shadow p-6 w-full max-w-sm">
+          <h1 className="text-2xl font-bold mb-2">ORMastery</h1>
+          <p className="text-sm text-gray-600 mb-4">
+            Please log in to view your surgeons.
+          </p>
+          <a
+            href="/login"
+            className="block text-center bg-blue-600 text-white py-2 rounded"
+          >
+            Go to Login
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen p-6 bg-gray-100">
-      <h1 className="text-2xl font-bold mb-4">ORMastery</h1>
-
-      <div className="mb-6">
-        <input
-          className="border p-2 mr-2"
-          placeholder="First Name"
-          value={firstName}
-          onChange={(e) => setFirstName(e.target.value)}
-        />
-        <input
-          className="border p-2 mr-2"
-          placeholder="Last Name"
-          value={lastName}
-          onChange={(e) => setLastName(e.target.value)}
-        />
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold">ORMastery</h1>
         <button
-          onClick={addSurgeon}
-          className="bg-blue-600 text-white px-4 py-2 rounded"
+          onClick={logout}
+          className="text-sm bg-gray-900 text-white px-3 py-2 rounded"
         >
-          Add Surgeon
+          Logout
         </button>
       </div>
 
-      <ul>
+      <div className="mb-6 bg-white rounded shadow p-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <input
+            className="border p-2 rounded w-full"
+            placeholder="First name"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+          />
+          <input
+            className="border p-2 rounded w-full"
+            placeholder="Last name"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+          />
+          <button
+            onClick={addSurgeon}
+            className="bg-blue-600 text-white px-4 py-2 rounded w-full sm:w-auto"
+          >
+            Add Surgeon
+          </button>
+        </div>
+      </div>
+
+      <ul className="space-y-2">
         {surgeons.map((s) => (
-          <li key={s.id} className="mb-2 p-3 bg-white rounded shadow">
+          <li key={s.id} className="p-3 bg-white rounded shadow">
             {s.first_name} {s.last_name}
           </li>
         ))}
