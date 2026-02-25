@@ -18,14 +18,12 @@ export default function Home() {
   const [lastName, setLastName] = useState("");
 
   useEffect(() => {
-    // Check current session
     supabase.auth.getSession().then(({ data }) => {
       setIsAuthed(!!data.session);
       setLoading(false);
       if (data.session) fetchSurgeons();
     });
 
-    // Listen for auth changes (magic link login will trigger this)
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsAuthed(!!session);
       if (session) fetchSurgeons();
@@ -137,7 +135,12 @@ export default function Home() {
       <ul className="space-y-2">
         {surgeons.map((s) => (
           <li key={s.id} className="p-3 bg-white rounded shadow">
-            {s.first_name} {s.last_name}
+            <a
+              href={`/surgeon/${s.id}`}
+              className="text-lg font-semibold text-gray-900"
+            >
+              {s.first_name} {s.last_name}
+            </a>
           </li>
         ))}
       </ul>
