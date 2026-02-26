@@ -10,14 +10,14 @@ export default function HeaderBar() {
         <Image
           src="/logo.png"
           alt="OR Mastery"
-          width={140}
-          height={40}
+          width={182}
+          height={57}
           priority
         />
       </Link>
 
       <button
-        className="p-2 rounded-lg border border-brand-dark text-brand-dark hover:bg-brand-dark hover:text-white transition"
+        className="p-2 rounded-lg border border-brand-accent text-brand-accent hover:bg-brand-dark hover:text-white transition"
         aria-label="menu"
         type="button"
         onClick={() => alert("Menu coming next")}
