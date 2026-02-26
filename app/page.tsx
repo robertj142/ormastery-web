@@ -146,7 +146,7 @@ export default function Home() {
   {surgeons.map((s) => (
     <li key={s.id}>
       <a
-  href={`/s/${s.id}`}
+  href={`/s?id=${s.id}`}
   target="_blank"
   rel="noreferrer"
   className="block p-4 bg-white rounded shadow border border-gray-200 hover:bg-gray-50 active:bg-gray-100 cursor-pointer"
