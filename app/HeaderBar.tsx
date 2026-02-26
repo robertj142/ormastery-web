@@ -16,14 +16,13 @@ export default function HeaderBar() {
         />
       </Link>
 
-      <button
-        className="p-2 rounded-lg border border-brand-accent text-brand-accent hover:bg-brand-dark hover:text-white transition"
-        aria-label="menu"
-        type="button"
-        onClick={() => alert("Menu coming next")}
-      >
-        ☰
-      </button>
+     <button
+  className="p-2 rounded-lg border border-brand-accent text-brand-accent hover:bg-brand-dark hover:text-white transition"
+  aria-label="menu"
+  type="button"
+  onClick={() => alert("Menu coming next")}
+>
+  &#9776;
     </header>
   );
 }
