@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
-import { useRouter } from "next/navigation";
 
 type Surgeon = {
   id: string;
@@ -154,27 +153,32 @@ export default function SurgeonClient() {
   return (
     <div className="min-h-screen bg-white">
   <div className="px-6 py-4 flex items-center justify-between">
-    <button className="p-2 rounded-lg border text-gray-900" aria-label="menu">
-      ☰
-    </button>
 
-    <button onClick={() => router.back()} className="text-blue-700 underline">
-      Back
-    </button>
-  </div>
+  {/* LEFT SIDE (empty or logo spacing) */}
+  <div />
+
+  {/* RIGHT SIDE */}
+  <button
+    className="p-2 rounded-lg border border-brand-dark text-brand-dark"
+    aria-label="menu"
+  >
+    ☰
+  </button>
+
+</div>
 
 
       <div className="px-6 pt-6 pb-2">
         <div className="text-3xl font-black tracking-tight text-gray-900">
           DR.{" "}
-          <span className="text-teal-600">
+          <span className="text-brand-accent">
             {surgeon.first_name} {surgeon.last_name}
           </span>
         </div>
       </div>
 
       <div className="px-6 py-6 flex gap-6 items-center">
-        <div className="h-36 w-36 rounded-xl border-4 border-teal-600 overflow-hidden bg-gray-100 flex items-center justify-center text-gray-500 text-sm">
+        <div className="h-36 w-36 rounded-x2 border-3 border-brand-dark overflow-hidden bg-gray-100 flex items-center justify-center text-gray-500 text-sm">
           Photo
         </div>
 
