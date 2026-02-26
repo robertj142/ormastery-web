@@ -1,5 +1,3 @@
-import Image from "next/image";
-import Link from "next/link";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -29,10 +27,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <div className="min-h-screen bg-gray-100">
-          <div className="min-h-screen bg-gray-100">
-  <HeaderBar />
-  <main>{children}</main>
-
+          <HeaderBar />
           <main>{children}</main>
         </div>
       </body>
