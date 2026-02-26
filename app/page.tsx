@@ -104,8 +104,13 @@ export default function Home() {
 
   return (
     <div className="min-h-screen p-6 bg-gray-100">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">ORMastery</h1>
+     <div className="flex items-center justify-between mb-4">
+  <div>
+    <h1 className="text-2xl font-bold">ORMastery</h1>
+    <div className="text-xs text-red-600 font-bold">
+      VERSION: 2026-02-25-A
+    </div>
+  </div>
         <button
           onClick={logout}
           className="text-sm bg-gray-900 text-white px-3 py-2 rounded"
