@@ -124,18 +124,24 @@ export default function SurgeonClient() {
 
   if (!surgeonId) {
     return (
-      <div className="min-h-screen p-6">
-        <a href="/" className="text-blue-700 underline">
+      <div className="min-h-screen p-6 bg-white">
+        <button
+          onClick={() => router.back()}
+          className="text-brand-accent underline text-sm"
+          type="button"
+        >
           Back
-        </a>
-        <div className="mt-6 text-gray-900 font-semibold">Missing surgeon id.</div>
+        </button>
+        <div className="mt-6 text-brand-dark font-semibold">
+          Missing surgeon id.
+        </div>
       </div>
     );
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-sm text-gray-600">
+      <div className="min-h-screen flex items-center justify-center text-sm text-gray-600 bg-white">
         Loading…
       </div>
     );
@@ -143,91 +149,102 @@ export default function SurgeonClient() {
 
   if (!surgeon) {
     return (
-      <div className="min-h-screen p-6">
-        <div className="mt-6 text-gray-900 font-semibold">Surgeon not found.</div>
+      <div className="min-h-screen p-6 bg-white">
+        <button
+          onClick={() => router.back()}
+          className="text-brand-accent underline text-sm"
+          type="button"
+        >
+          Back
+        </button>
+
+        <div className="mt-6 text-brand-dark font-semibold">Surgeon not found.</div>
         {err ? <div className="mt-2 text-sm text-red-600">Error: {err}</div> : null}
       </div>
     );
   }
 
   return (
-  <div className="min-h-screen bg-white">
-    <div className="px-6 pt-6 pb-2">
-      <div className="text-3xl font-black tracking-tight text-brand-dark">
-        DR.{" "}
-        <span className="text-brand-accent">
-          {surgeon.first_name} {surgeon.last_name}
-        </span>
-      </div>
-
-      <button
-        onClick={() => router.back()}
-        className="mt-2 text-brand-accent underline text-sm"
-        type="button"
-      >
-        Back
-      </button>
-    </div>
-
-    <div className="px-6 py-6 flex gap-6 items-center">
-      <div className="h-36 w-36 rounded-xl border-4 border-brand-dark overflow-hidden bg-gray-100 flex items-center justify-center text-gray-500 text-sm">
-        Photo
-      </div>
-
-      <div className="flex-1">
-        <div className="flex gap-10 text-lg text-gray-900">
-          <div>
-            <div className="text-sm text-gray-500">Gloves</div>
-            <div className="font-semibold">—</div>
-          </div>
-          <div>
-            <div className="text-sm text-gray-500">Gown</div>
-            <div className="font-semibold">—</div>
-          </div>
+    <div className="min-h-screen bg-white">
+      <div className="px-6 pt-6 pb-2">
+        <div className="text-3xl font-black tracking-tight text-brand-dark">
+          DR.{" "}
+          <span className="text-brand-accent">
+            {surgeon.first_name} {surgeon.last_name}
+          </span>
         </div>
 
-        {surgeon.specialty ? (
-          <div className="mt-3 text-sm text-gray-600">
-            Specialty: {surgeon.specialty}
+        <button
+          onClick={() => router.back()}
+          className="mt-2 text-brand-accent underline text-sm"
+          type="button"
+        >
+          Back
+        </button>
+      </div>
+
+      <div className="px-6 py-6 flex gap-6 items-center">
+        <div className="h-36 w-36 rounded-xl border-4 border-brand-dark overflow-hidden bg-gray-100 flex items-center justify-center text-gray-500 text-sm">
+          Photo
+        </div>
+
+        <div className="flex-1">
+          <div className="flex gap-10 text-lg text-gray-900">
+            <div>
+              <div className="text-sm text-gray-500">Gloves</div>
+              <div className="font-semibold">—</div>
+            </div>
+            <div>
+              <div className="text-sm text-gray-500">Gown</div>
+              <div className="font-semibold">—</div>
+            </div>
           </div>
+
+          {surgeon.specialty ? (
+            <div className="mt-3 text-sm text-gray-600">
+              Specialty: {surgeon.specialty}
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="px-6 pb-6">
+        <div className="bg-gray-50 border rounded-2xl p-4 flex flex-col gap-3">
+          <div className="text-sm font-semibold text-brand-dark">Add a procedure</div>
+
+          <input
+            className="border p-3 rounded-xl"
+            placeholder='e.g., "MicroPort Knee", "rTSA – Catalyst"'
+            value={newProcedureName}
+            onChange={(e) => setNewProcedureName(e.target.value)}
+          />
+
+          <button
+            onClick={addProcedure}
+            disabled={adding}
+            className="bg-brand-accent text-white py-3 rounded-xl font-semibold disabled:opacity-60"
+            type="button"
+          >
+            {adding ? "Adding…" : "+ Add Procedure"}
+          </button>
+        </div>
+      </div>
+
+      <div className="px-6 pb-10 space-y-6">
+        {procedures.map((p) => (
+          <a
+            key={p.id}
+            href={`/procedure?procedureId=${p.id}&surgeonId=${surgeonId}`}
+            className="block w-full border-4 border-gray-900 rounded-2xl py-10 text-4xl font-medium text-gray-900 text-center"
+          >
+            {p.name}
+          </a>
+        ))}
+
+        {procedures.length === 0 ? (
+          <div className="text-gray-600 text-sm">No procedures yet. Add one above.</div>
         ) : null}
       </div>
     </div>
-
-    <div className="px-6 pb-6">
-      <div className="bg-gray-50 border rounded-2xl p-4 flex flex-col gap-3">
-        <div className="text-sm font-semibold text-gray-900">Add a procedure</div>
-        <input
-          className="border p-3 rounded-xl"
-          placeholder='e.g., "MicroPort Knee", "rTSA – Catalyst"'
-          value={newProcedureName}
-          onChange={(e) => setNewProcedureName(e.target.value)}
-        />
-        <button
-          onClick={addProcedure}
-          disabled={adding}
-          className="bg-brand-accent text-white py-3 rounded-xl font-semibold disabled:opacity-60"
-          type="button"
-        >
-          {adding ? "Adding…" : "+ Add Procedure"}
-        </button>
-      </div>
-    </div>
-
-    <div className="px-6 pb-10 space-y-6">
-      {procedures.map((p) => (
-        <a
-          key={p.id}
-          href={`/procedure?procedureId=${p.id}&surgeonId=${surgeonId}`}
-          className="block w-full border-4 border-gray-900 rounded-2xl py-10 text-4xl font-medium text-gray-900 text-center"
-        >
-          {p.name}
-        </a>
-      ))}
-
-      {procedures.length === 0 ? (
-        <div className="text-gray-600 text-sm">No procedures yet. Add one above.</div>
-      ) : null}
-    </div>
-  </div>
-);
+  );
+}
