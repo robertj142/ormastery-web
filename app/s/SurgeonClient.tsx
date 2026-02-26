@@ -178,7 +178,7 @@ export default function SurgeonClient() {
       </div>
 
       <div className="px-6 py-6 flex gap-6 items-center">
-        <div className="h-36 w-36 rounded-x2 border-3 border-brand-dark overflow-hidden bg-gray-100 flex items-center justify-center text-gray-500 text-sm">
+        <div className="h-36 w-36 rounded-x1 border-3 border-brand-dark overflow-hidden bg-gray-100 flex items-center justify-center text-gray-500 text-sm">
           Photo
         </div>
 
