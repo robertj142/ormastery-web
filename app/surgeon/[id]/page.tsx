@@ -5,6 +5,7 @@ import { supabase } from "../../../lib/supabaseClient";
 
 type Surgeon = {
   id: string;
+  user_id: string;
   first_name: string;
   last_name: string;
   specialty: string | null;
@@ -17,24 +18,57 @@ export default function SurgeonDetailPage({
 }) {
   const [surgeon, setSurgeon] = useState<Surgeon | null>(null);
   const [loading, setLoading] = useState(true);
+  const [errMsg, setErrMsg] = useState<string | null>(null);
 
   // Placeholder procedures for layout testing (we’ll make these real next step)
-  const procedures = ["MicroPort Hip", "MicroPort Knee", "Conformis Knee", "Depuy Knee"];
+  const procedures = [
+    "MicroPort Hip",
+    "MicroPort Knee",
+    "Conformis Knee",
+    "Depuy Knee",
+  ];
 
   useEffect(() => {
     fetchSurgeon();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.id]);
 
   async function fetchSurgeon() {
     setLoading(true);
+    setErrMsg(null);
 
+    // 1) Confirm session exists
+    const { data: sessionData, error: sessionErr } =
+      await supabase.auth.getSession();
+
+    if (sessionErr) {
+      setErrMsg(sessionErr.message);
+      setLoading(false);
+      return;
+    }
+
+    const session = sessionData.session;
+    if (!session) {
+      window.location.href = "/login";
+      return;
+    }
+
+    // 2) Fetch surgeon ONLY if it belongs to this user
     const { data, error } = await supabase
       .from("surgeons")
-      .select("id, first_name, last_name, specialty")
+      .select("id, user_id, first_name, last_name, specialty")
       .eq("id", params.id)
-      .single();
+      .eq("user_id", session.user.id)
+      .maybeSingle();
 
-    if (!error) setSurgeon(data);
+    if (error) {
+      setErrMsg(error.message);
+      setSurgeon(null);
+      setLoading(false);
+      return;
+    }
+
+    setSurgeon(data ?? null);
     setLoading(false);
   }
 
@@ -52,7 +86,14 @@ export default function SurgeonDetailPage({
         <a href="/" className="text-blue-700 underline">
           Back
         </a>
-        <div className="mt-6 text-gray-800">Surgeon not found.</div>
+        <div className="mt-6 text-gray-900 font-semibold">Surgeon not found.</div>
+        {errMsg ? (
+          <div className="mt-2 text-sm text-red-600">Error: {errMsg}</div>
+        ) : (
+          <div className="mt-2 text-sm text-gray-600">
+            This surgeon either doesn’t exist or doesn’t belong to your account.
+          </div>
+        )}
       </div>
     );
   }
@@ -90,7 +131,6 @@ export default function SurgeonDetailPage({
 
       {/* Photo + quick sizes */}
       <div className="px-6 py-6 flex gap-6 items-center">
-        {/* Photo placeholder */}
         <div className="h-36 w-36 rounded-xl border-4 border-teal-600 overflow-hidden bg-gray-100 flex items-center justify-center text-gray-500 text-sm">
           Photo
         </div>
