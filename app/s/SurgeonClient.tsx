@@ -145,9 +145,6 @@ export default function SurgeonClient() {
   if (!surgeon) {
     return (
       <div className="min-h-screen p-6">
-        <a href="/" className="text-blue-700 underline">
-          Back
-        </a>
         <div className="mt-6 text-gray-900 font-semibold">Surgeon not found.</div>
         {err ? <div className="mt-2 text-sm text-red-600">Error: {err}</div> : null}
       </div>
@@ -158,8 +155,6 @@ export default function SurgeonClient() {
     <div className="min-h-screen bg-white">
       <div className="px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-teal-600" />
-          </div>
         <button className="p-2 rounded-lg border text-gray-900" aria-label="menu">
           ☰
         </button>
@@ -215,7 +210,7 @@ export default function SurgeonClient() {
           <button
             onClick={addProcedure}
             disabled={adding}
-            className="bg-teal-700 text-white py-3 rounded-xl font-semibold disabled:opacity-60"
+            className="bg-brand-accent text-white py-3 rounded-xl font-semibold disabled:opacity-60"
           >
             {adding ? "Adding…" : "+ Add Procedure"}
           </button>

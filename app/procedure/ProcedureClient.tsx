@@ -127,7 +127,7 @@ export default function ProcedureClient() {
         <button
           onClick={save}
           disabled={saving}
-          className="bg-teal-700 text-white px-4 py-2 rounded-xl font-semibold disabled:opacity-60"
+          className="bg-brand-accent text-white px-4 py-2 rounded-xl font-semibold disabled:opacity-60"
         >
           {saving ? "Saving…" : "Save"}
         </button>

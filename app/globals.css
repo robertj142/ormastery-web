@@ -3,6 +3,8 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --brand-dark: #00243d;
+  --brand-accent: #00a9be;
 }
 
 @theme inline {
@@ -17,6 +19,28 @@
     --background: #0a0a0a;
     --foreground: #ededed;
   }
+}
+}
+
+/* Utility classes */
+.bg-brand-dark {
+  background-color: var(--brand-dark);
+}
+
+.text-brand-dark {
+  color: var(--brand-dark);
+}
+
+.bg-brand-accent {
+  background-color: var(--brand-accent);
+}
+
+.text-brand-accent {
+  color: var(--brand-accent);
+}
+
+.border-brand-accent {
+  border-color: var(--brand-accent);
 }
 
 body {

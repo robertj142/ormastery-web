@@ -59,7 +59,7 @@ export default function LoginPage() {
 
         <button
           onClick={handleSubmit}
-          className="bg-blue-600 text-white w-full py-2 rounded"
+          className="bg-brand-dark text-white w-full py-2 rounded"
         >
           {mode === "login" ? "Log In" : "Sign Up"}
         </button>

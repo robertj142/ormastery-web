@@ -92,7 +92,7 @@ export default function Home() {
           </p>
           <a
             href="/login"
-            className="block text-center bg-blue-600 text-white py-2 rounded"
+            className="block text-center bg-brand-dark text-white py-2 rounded"
           >
             Go to Login
           </a>
@@ -133,7 +133,7 @@ export default function Home() {
           />
           <button
             onClick={addSurgeon}
-            className="bg-blue-600 text-white px-4 py-2 rounded w-full sm:w-auto"
+            className="bg-brand-dark text-white px-4 py-2 rounded w-full sm:w-auto"
           >
             Add Surgeon
           </button>
