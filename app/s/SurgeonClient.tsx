@@ -232,6 +232,6 @@ export default function SurgeonClient() {
           <div className="text-gray-600 text-sm">No procedures yet. Add one above.</div>
         ) : null}
       </div>
-    </div>
+    
   );
 }
