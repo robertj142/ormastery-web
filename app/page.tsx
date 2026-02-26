@@ -146,10 +146,12 @@ export default function Home() {
   {surgeons.map((s) => (
     <li key={s.id}>
       <a
-        href={`/surgeon/${s.id}`}
-        className="block p-4 bg-white rounded shadow border border-gray-200 hover:bg-gray-50 active:bg-gray-100 cursor-pointer"
-        style={{ pointerEvents: "auto" }}
-      >
+  href={`/surgeon/${s.id}`}
+  target="_blank"
+  rel="noreferrer"
+  className="block p-4 bg-white rounded shadow border border-gray-200 hover:bg-gray-50 active:bg-gray-100 cursor-pointer"
+  style={{ pointerEvents: "auto" }}
+>
         <div className="text-lg font-semibold text-gray-900">
           {s.first_name} {s.last_name}
         </div>
