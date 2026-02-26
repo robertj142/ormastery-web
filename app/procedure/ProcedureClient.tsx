@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
+import { useRouter } from "next/navigation";
 
 type Procedure = {
   id: string;
@@ -16,6 +17,7 @@ export default function ProcedureClient() {
   const sp = useSearchParams();
   const procedureId = sp.get("procedureId");
   const surgeonId = sp.get("surgeonId");
+  const router = useRouter();
 
   const [loading, setLoading] = useState(true);
   const [proc, setProc] = useState<Procedure | null>(null);
@@ -88,7 +90,9 @@ export default function ProcedureClient() {
   if (!procedureId) {
     return (
       <div className="min-h-screen p-6">
-        <a href="/" className="text-blue-700 underline">Back</a>
+        <button onClick={() => router.back()} className="text-blue-700 underline">
+  Back
+</button>
         <div className="mt-6 font-semibold">Missing procedureId.</div>
       </div>
     );

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
+import { useRouter } from "next/navigation";
 
 type Surgeon = {
   id: string;
@@ -20,6 +21,7 @@ type Procedure = {
 export default function SurgeonClient() {
   const sp = useSearchParams();
   const surgeonId = sp.get("id");
+  const router = useRouter();
 
   const [loading, setLoading] = useState(true);
   const [surgeon, setSurgeon] = useState<Surgeon | null>(null);
@@ -168,6 +170,12 @@ export default function SurgeonClient() {
           ☰
         </button>
       </div>
+
+
+<button onClick={() => router.back()} className="text-blue-700 underline">
+  Back
+</button>
+
 
       <div className="px-6 pt-6 pb-2">
         <div className="text-3xl font-black tracking-tight text-gray-900">
