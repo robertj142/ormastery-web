@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
 
 type Surgeon = {
@@ -11,16 +12,14 @@ type Surgeon = {
   specialty: string | null;
 };
 
-export default function SurgeonDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default function SurgeonDetailPage() {
+  const params = useParams();
+  const id = params?.id as string | undefined;
+
   const [surgeon, setSurgeon] = useState<Surgeon | null>(null);
   const [loading, setLoading] = useState(true);
   const [errMsg, setErrMsg] = useState<string | null>(null);
 
-  // Placeholder procedures for layout testing (we’ll make these real next step)
   const procedures = [
     "MicroPort Hip",
     "MicroPort Knee",
@@ -29,15 +28,15 @@ export default function SurgeonDetailPage({
   ];
 
   useEffect(() => {
-    fetchSurgeon();
+    if (!id) return; // wait until Next provides the param
+    fetchSurgeon(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.id]);
+  }, [id]);
 
-  async function fetchSurgeon() {
+  async function fetchSurgeon(surgeonId: string) {
     setLoading(true);
     setErrMsg(null);
 
-    // 1) Confirm session exists
     const { data: sessionData, error: sessionErr } =
       await supabase.auth.getSession();
 
@@ -53,11 +52,10 @@ export default function SurgeonDetailPage({
       return;
     }
 
-    // 2) Fetch surgeon ONLY if it belongs to this user
     const { data, error } = await supabase
       .from("surgeons")
       .select("id, user_id, first_name, last_name, specialty")
-      .eq("id", params.id)
+      .eq("id", surgeonId)
       .eq("user_id", session.user.id)
       .maybeSingle();
 
@@ -70,6 +68,14 @@ export default function SurgeonDetailPage({
 
     setSurgeon(data ?? null);
     setLoading(false);
+  }
+
+  if (!id) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-sm text-gray-600">
+        Loading…
+      </div>
+    );
   }
 
   if (loading) {
