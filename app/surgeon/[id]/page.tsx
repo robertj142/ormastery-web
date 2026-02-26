@@ -12,65 +12,115 @@ type Surgeon = {
   specialty: string | null;
 };
 
+type Procedure = {
+  id: string;
+  name: string;
+};
+
 export default function SurgeonDetailPage() {
   const params = useParams();
-  const id = params?.id as string | undefined;
+  const surgeonId = params?.id as string | undefined;
 
   const [surgeon, setSurgeon] = useState<Surgeon | null>(null);
+  const [procedures, setProcedures] = useState<Procedure[]>([]);
   const [loading, setLoading] = useState(true);
   const [errMsg, setErrMsg] = useState<string | null>(null);
 
-  const procedures = [
-    "MicroPort Hip",
-    "MicroPort Knee",
-    "Conformis Knee",
-    "Depuy Knee",
-  ];
+  const [newProcedureName, setNewProcedureName] = useState("");
+  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
-    if (!id) return; // wait until Next provides the param
-    fetchSurgeon(id);
+    if (!surgeonId) return;
+    loadAll(surgeonId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [surgeonId]);
 
-  async function fetchSurgeon(surgeonId: string) {
+  async function loadAll(id: string) {
     setLoading(true);
     setErrMsg(null);
 
-    const { data: sessionData, error: sessionErr } =
-      await supabase.auth.getSession();
-
-    if (sessionErr) {
-      setErrMsg(sessionErr.message);
-      setLoading(false);
-      return;
-    }
-
-    const session = sessionData.session;
-    if (!session) {
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) {
       window.location.href = "/login";
       return;
     }
 
-    const { data, error } = await supabase
+    const userId = sessionData.session.user.id;
+
+    // Surgeon
+    const { data: sData, error: sErr } = await supabase
       .from("surgeons")
       .select("id, user_id, first_name, last_name, specialty")
-      .eq("id", surgeonId)
-      .eq("user_id", session.user.id)
+      .eq("id", id)
+      .eq("user_id", userId)
       .maybeSingle();
 
-    if (error) {
-      setErrMsg(error.message);
+    if (sErr) {
+      setErrMsg(sErr.message);
       setSurgeon(null);
       setLoading(false);
       return;
     }
+    if (!sData) {
+      setSurgeon(null);
+      setLoading(false);
+      return;
+    }
+    setSurgeon(sData);
 
-    setSurgeon(data ?? null);
+    // Procedures
+    const { data: pData, error: pErr } = await supabase
+      .from("procedures")
+      .select("id, name")
+      .eq("surgeon_id", id)
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (pErr) {
+      setErrMsg(pErr.message);
+      setProcedures([]);
+      setLoading(false);
+      return;
+    }
+
+    setProcedures(pData ?? []);
     setLoading(false);
   }
 
-  if (!id) {
+  async function addProcedure() {
+    const name = newProcedureName.trim();
+    if (!name) return alert("Enter a procedure name.");
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) {
+      window.location.href = "/login";
+      return;
+    }
+
+    if (!surgeonId) return;
+
+    setAdding(true);
+
+    const userId = sessionData.session.user.id;
+
+    const { error } = await supabase.from("procedures").insert({
+      user_id: userId,
+      surgeon_id: surgeonId,
+      name,
+      draping: "",
+      instruments_trays: "",
+      workflow_notes: "",
+    });
+
+    setAdding(false);
+
+    if (error) return alert(error.message);
+
+    setNewProcedureName("");
+    await loadAll(surgeonId);
+  }
+
+  if (!surgeonId) {
     return (
       <div className="min-h-screen flex items-center justify-center text-sm text-gray-600">
         Loading…
@@ -95,11 +145,7 @@ export default function SurgeonDetailPage() {
         <div className="mt-6 text-gray-900 font-semibold">Surgeon not found.</div>
         {errMsg ? (
           <div className="mt-2 text-sm text-red-600">Error: {errMsg}</div>
-        ) : (
-          <div className="mt-2 text-sm text-gray-600">
-            This surgeon either doesn’t exist or doesn’t belong to your account.
-          </div>
-        )}
+        ) : null}
       </div>
     );
   }
@@ -135,7 +181,7 @@ export default function SurgeonDetailPage() {
         </div>
       </div>
 
-      {/* Photo + quick sizes */}
+      {/* Photo + quick sizes (placeholders for now) */}
       <div className="px-6 py-6 flex gap-6 items-center">
         <div className="h-36 w-36 rounded-xl border-4 border-teal-600 overflow-hidden bg-gray-100 flex items-center justify-center text-gray-500 text-sm">
           Photo
@@ -161,15 +207,42 @@ export default function SurgeonDetailPage() {
         </div>
       </div>
 
+      {/* Add procedure */}
+      <div className="px-6 pb-6">
+        <div className="bg-gray-50 border rounded-2xl p-4 flex flex-col gap-3">
+          <div className="text-sm font-semibold text-gray-900">Add a procedure</div>
+          <input
+            className="border p-3 rounded-xl"
+            placeholder='e.g., "MicroPort Knee", "rTSA – Catalyst", "Hip Revision"'
+            value={newProcedureName}
+            onChange={(e) => setNewProcedureName(e.target.value)}
+          />
+          <button
+            onClick={addProcedure}
+            disabled={adding}
+            className="bg-teal-700 text-white py-3 rounded-xl font-semibold disabled:opacity-60"
+          >
+            {adding ? "Adding…" : "+ Add Procedure"}
+          </button>
+        </div>
+      </div>
+
       {/* Big procedure buttons */}
       <div className="px-6 pb-10 space-y-6">
+        {procedures.length === 0 ? (
+          <div className="text-gray-600 text-sm">
+            No procedures yet. Add one above.
+          </div>
+        ) : null}
+
         {procedures.map((p) => (
-          <button
-            key={p}
-            className="w-full border-4 border-gray-900 rounded-2xl py-10 text-4xl font-medium text-gray-900"
+          <a
+            key={p.id}
+            href={`/surgeon/${surgeon.id}/procedure/${p.id}`}
+            className="block w-full border-4 border-gray-900 rounded-2xl py-10 text-4xl font-medium text-gray-900 text-center"
           >
-            {p}
-          </button>
+            {p.name}
+          </a>
         ))}
       </div>
     </div>
