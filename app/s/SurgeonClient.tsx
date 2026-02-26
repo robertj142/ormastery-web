@@ -159,13 +159,7 @@ export default function SurgeonClient() {
       <div className="px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl bg-teal-600" />
-          <div>
-            <div className="text-xl font-bold">
-              OR<span className="text-teal-600">Mastery</span>
-            </div>
-            <div className="text-xs text-gray-600">YOUR SURGICAL WORKFLOW, ORGANIZED.</div>
           </div>
-        </div>
         <button className="p-2 rounded-lg border text-gray-900" aria-label="menu">
           ☰
         </button>

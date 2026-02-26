@@ -87,7 +87,6 @@ export default function Home() {
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
         <div className="bg-white rounded shadow p-6 w-full max-w-sm">
-          <h1 className="text-2xl font-bold mb-2">ORMastery</h1>
           <p className="text-sm text-gray-600 mb-4">
             Please log in to view your surgeons.
           </p>
@@ -106,7 +105,6 @@ export default function Home() {
     <div className="min-h-screen p-6 bg-gray-100">
      <div className="flex items-center justify-between mb-4">
   <div>
-    <h1 className="text-2xl font-bold">ORMastery</h1>
     <div className="text-xs text-red-600 font-bold">
       VERSION: 2026-02-25-A
     </div>
