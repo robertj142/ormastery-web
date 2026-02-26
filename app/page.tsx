@@ -35,14 +35,18 @@ export default function Home() {
     };
   }, []);
 
-  async function fetchSurgeons() {
-    const { data, error } = await supabase
-      .from("surgeons")
-      .select("id, first_name, last_name")
-      .order("last_name", { ascending: true });
+ async function fetchSurgeons() {
+  const { data, error } = await supabase
+    .from("surgeons")
+    .select("id, first_name, last_name")
+    .order("last_name", { ascending: true });
 
-    if (!error && data) setSurgeons(data);
+  if (error) {
+    alert(error.message);
+    return;
   }
+  setSurgeons(data ?? []);
+}
 
   async function addSurgeon() {
     const { data } = await supabase.auth.getUser();
@@ -133,17 +137,23 @@ export default function Home() {
       </div>
 
       <ul className="space-y-2">
-        {surgeons.map((s) => (
-          <li key={s.id} className="p-3 bg-white rounded shadow">
-            <a
-              href={`/surgeon/${s.id}`}
-              className="text-lg font-semibold text-gray-900"
-            >
-              {s.first_name} {s.last_name}
-            </a>
-          </li>
-        ))}
-      </ul>
+  {surgeons.map((s) => (
+    <li key={s.id} className="p-3 bg-white rounded shadow">
+      {s.id ? (
+        <a
+          href={`/surgeon/${s.id}`}
+          className="text-lg font-semibold text-gray-900"
+        >
+          {s.first_name} {s.last_name}
+        </a>
+      ) : (
+        <div className="text-red-600">
+          Missing surgeon id for {s.first_name} {s.last_name}
+        </div>
+      )}
+    </li>
+  ))}
+</ul>
     </div>
   );
 }
