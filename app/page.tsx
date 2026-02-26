@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
+import Link from "next/link";
 
 type Surgeon = {
   id: string;
@@ -136,21 +137,12 @@ export default function Home() {
         </div>
       </div>
 
-      <ul className="space-y-2">
+     <ul className="space-y-2">
   {surgeons.map((s) => (
     <li key={s.id} className="p-3 bg-white rounded shadow">
-      {s.id ? (
-        <a
-          href={`/surgeon/${s.id}`}
-          className="text-lg font-semibold text-gray-900"
-        >
-          {s.first_name} {s.last_name}
-        </a>
-      ) : (
-        <div className="text-red-600">
-          Missing surgeon id for {s.first_name} {s.last_name}
-        </div>
-      )}
+      <Link href={`/surgeon/${s.id}`} className="text-lg font-semibold text-gray-900">
+        {s.first_name} {s.last_name}
+      </Link>
     </li>
   ))}
 </ul>
