@@ -152,20 +152,7 @@ export default function SurgeonClient() {
 
   return (
     <div className="min-h-screen bg-white">
-  <div className="px-6 py-4 flex items-center justify-between">
-
-  {/* LEFT SIDE (empty or logo spacing) */}
-  <div />
-
-  {/* RIGHT SIDE */}
-  <button
-    className="p-2 rounded-lg border border-brand-dark text-brand-dark"
-    aria-label="menu"
-  >
-    ☰
-  </button>
-
-</div>
+  </div>
 
 
       <div className="px-6 pt-6 pb-2">
