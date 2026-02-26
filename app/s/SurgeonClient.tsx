@@ -153,17 +153,15 @@ export default function SurgeonClient() {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-        <button className="p-2 rounded-lg border text-gray-900" aria-label="menu">
-          ☰
-        </button>
-      </div>
+  <div className="px-6 py-4 flex items-center justify-between">
+    <button className="p-2 rounded-lg border text-gray-900" aria-label="menu">
+      ☰
+    </button>
 
-
-<button onClick={() => router.back()} className="text-blue-700 underline">
-  Back
-</button>
+    <button onClick={() => router.back()} className="text-blue-700 underline">
+      Back
+    </button>
+  </div>
 
 
       <div className="px-6 pt-6 pb-2">
@@ -232,6 +230,6 @@ export default function SurgeonClient() {
           <div className="text-gray-600 text-sm">No procedures yet. Add one above.</div>
         ) : null}
       </div>
-    
+    </div>
   );
 }
