@@ -137,12 +137,19 @@ export default function Home() {
         </div>
       </div>
 
-     <ul className="space-y-2">
+   <ul className="space-y-2">
   {surgeons.map((s) => (
-    <li key={s.id} className="p-3 bg-white rounded shadow">
-      <Link href={`/surgeon/${s.id}`} className="text-lg font-semibold text-gray-900">
-        {s.first_name} {s.last_name}
-      </Link>
+    <li key={s.id}>
+      <a
+        href={`/surgeon/${s.id}`}
+        className="block p-4 bg-white rounded shadow border border-gray-200 hover:bg-gray-50 active:bg-gray-100 cursor-pointer"
+        style={{ pointerEvents: "auto" }}
+      >
+        <div className="text-lg font-semibold text-gray-900">
+          {s.first_name} {s.last_name}
+        </div>
+        <div className="text-xs text-gray-500">{s.id}</div>
+      </a>
     </li>
   ))}
 </ul>
