@@ -117,17 +117,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen p-6 bg-gray-100">
-      <div className="flex items-center justify-between mb-6">
-        
-
-        <button
-          onClick={logout}
-          className="text-sm bg-gray-900 text-white px-3 py-2 rounded"
-        >
-          Logout
-        </button>
-      </div>
-
+      <div className="flex items-center justify-between mb-6"></div>
       {/* Add Surgeon Button */}
       <div className="mb-6">
         <button
