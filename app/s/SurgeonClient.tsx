@@ -251,21 +251,25 @@ export default function SurgeonClient() {
       <div className="px-6 pt-6 pb-6 flex gap-10 items-center">
         <div className="flex flex-col items-center">
           {/* Outer ring */}
-          <div className="h-40 w-40 rounded-full bg-brand-dark flex items-center justify-center">
-            {/* Inner image circle */}
-            <div className="h-[140px] w-[140px] rounded-full overflow-hidden bg-gray-100 flex items-center justify-center text-gray-500 text-sm">
-              {surgeonPhotoUrl ? (
-                <img
-                  src={surgeonPhotoUrl}
-                  alt="Surgeon"
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                "No Photo"
-              )}
-            </div>
-          </div>
+          <div className="relative h-40 w-40 flex items-center justify-center">
+  {/* Outer subtle shadow ring */}
+  <div className="absolute inset-0 rounded-full shadow-lg" />
 
+  {/* Accent ring */}
+  <div className="h-40 w-40 rounded-full border-[6px] border-brand-accent p-[6px] bg-white">
+    <div className="h-full w-full rounded-full overflow-hidden bg-gray-100 flex items-center justify-center text-gray-500 text-sm">
+      {surgeonPhotoUrl ? (
+        <img
+          src={surgeonPhotoUrl}
+          alt="Surgeon"
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        "No Photo"
+      )}
+    </div>
+  </div>
+</div>
           <label className="mt-4 text-sm text-brand-accent underline cursor-pointer">
             {uploadingPhoto ? "Uploading..." : "Upload photo"}
             <input
