@@ -245,7 +245,7 @@ export default function SurgeonClient() {
 
   if (!surgeonId) {
     return (
-      <div className="min-h-screen p-6 bg-transparent">
+      <div className="min-h-screen p-6 bg-white">
         <button
           onClick={() => router.back()}
           className="text-brand-accent underline text-sm"
@@ -262,7 +262,7 @@ export default function SurgeonClient() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-sm text-gray-600 bg-white/10">
+      <div className="min-h-screen flex items-center justify-center text-sm text-gray-600 bg-white">
         Loading…
       </div>
     );
@@ -270,7 +270,7 @@ export default function SurgeonClient() {
 
   if (!surgeon) {
     return (
-      <div className="min-h-screen p-6 bg-white/10">
+      <div className="min-h-screen p-6 bg-white">
         <button
           onClick={() => router.back()}
           className="text-brand-accent underline text-sm"
@@ -290,7 +290,7 @@ export default function SurgeonClient() {
   }
 
   return (
-    <div className="min-h-screen bg-white/10">
+    <div className="min-h-screen bg-white">
       {/* Top row: Back left, Delete right */}
       <div className="px-6 pt-6 pb-2 flex items-center justify-between">
         <button
