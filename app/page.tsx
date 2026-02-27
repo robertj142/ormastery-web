@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import Link from "next/link";
 
 type Surgeon = {
   id: string;
@@ -34,20 +33,21 @@ export default function Home() {
     return () => {
       sub.subscription.unsubscribe();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
- async function fetchSurgeons() {
-  const { data, error } = await supabase
-    .from("surgeons")
-    .select("id, first_name, last_name")
-    .order("last_name", { ascending: true });
+  async function fetchSurgeons() {
+    const { data, error } = await supabase
+      .from("surgeons")
+      .select("id, first_name, last_name")
+      .order("last_name", { ascending: true });
 
-  if (error) {
-    alert(error.message);
-    return;
+    if (error) {
+      alert(error.message);
+      return;
+    }
+    setSurgeons(data ?? []);
   }
-  setSurgeons(data ?? []);
-}
 
   async function addSurgeon() {
     const { data } = await supabase.auth.getUser();
@@ -67,6 +67,38 @@ export default function Home() {
 
     setFirstName("");
     setLastName("");
+    fetchSurgeons();
+  }
+
+  async function deleteSurgeon(surgeonId: string, surgeonName: string) {
+    const ok = confirm(
+      `Delete ${surgeonName}?\n\nThis will also delete all procedures for this surgeon.`
+    );
+    if (!ok) return;
+
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) {
+      window.location.href = "/login";
+      return;
+    }
+
+    // Delete procedures first (safe if you later add FK constraints)
+    const { error: pErr } = await supabase
+      .from("procedures")
+      .delete()
+      .eq("user_id", data.user.id)
+      .eq("surgeon_id", surgeonId);
+
+    if (pErr) return alert(pErr.message);
+
+    const { error: sErr } = await supabase
+      .from("surgeons")
+      .delete()
+      .eq("user_id", data.user.id)
+      .eq("id", surgeonId);
+
+    if (sErr) return alert(sErr.message);
+
     fetchSurgeons();
   }
 
@@ -103,15 +135,14 @@ export default function Home() {
 
   return (
     <div className="min-h-screen p-6 bg-gray-100">
-     <div className="flex items-center justify-between mb-4">
-  <div>
-    <div className="text-xs text-red-600 font-bold">
-      VERSION: 2026-02-25-A
-    </div>
-  </div>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <div className="text-xs text-red-600 font-bold">VERSION: 2026-02-25-A</div>
+        </div>
         <button
           onClick={logout}
           className="text-sm bg-gray-900 text-white px-3 py-2 rounded"
+          type="button"
         >
           Logout
         </button>
@@ -134,28 +165,41 @@ export default function Home() {
           <button
             onClick={addSurgeon}
             className="bg-brand-dark text-white px-4 py-2 rounded w-full sm:w-auto"
+            type="button"
           >
             Add Surgeon
           </button>
         </div>
       </div>
 
-   <ul className="space-y-2">
-  {surgeons.map((s) => (
-    <li key={s.id}>
-      <a
-  href={`/s?id=${s.id}`}
-  className="block p-4 bg-white rounded shadow border border-gray-200 hover:bg-gray-50 active:bg-gray-100 cursor-pointer"
-  style={{ pointerEvents: "auto" }}
->
-        <div className="text-lg font-semibold text-gray-900">
-          {s.first_name} {s.last_name}
-        </div>
-        <div className="text-xs text-gray-500">{s.id}</div>
-      </a>
-    </li>
-  ))}
-</ul>
+      <ul className="space-y-2">
+        {surgeons.map((s) => (
+          <li
+            key={s.id}
+            className="bg-white rounded shadow border border-gray-200 overflow-hidden"
+          >
+            <div className="flex items-center justify-between p-4">
+              <a
+                href={`/s?id=${s.id}`}
+                className="flex-1 hover:opacity-90 active:opacity-80"
+              >
+                <div className="text-lg font-semibold text-gray-900">
+                  {s.first_name} {s.last_name}
+                </div>
+                <div className="text-xs text-gray-500">{s.id}</div>
+              </a>
+
+              <button
+                type="button"
+                onClick={() => deleteSurgeon(s.id, `${s.first_name} ${s.last_name}`)}
+                className="ml-4 text-sm text-red-600 underline"
+              >
+                Delete
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

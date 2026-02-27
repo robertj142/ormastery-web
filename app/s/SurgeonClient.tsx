@@ -43,25 +43,28 @@ export default function SurgeonClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [surgeonId]);
 
+  async function getUserIdOrRedirect(): Promise<string | null> {
+    const { data: sessionData, error } = await supabase.auth.getSession();
+    if (error) {
+      setErr(error.message);
+      return null;
+    }
+    if (!sessionData.session) {
+      window.location.href = "/login";
+      return null;
+    }
+    return sessionData.session.user.id;
+  }
+
   async function loadAll(id: string) {
     setLoading(true);
     setErr(null);
 
-    const { data: sessionData, error: sessionErr } =
-      await supabase.auth.getSession();
-
-    if (sessionErr) {
-      setErr(sessionErr.message);
+    const userId = await getUserIdOrRedirect();
+    if (!userId) {
       setLoading(false);
       return;
     }
-
-    if (!sessionData.session) {
-      window.location.href = "/login";
-      return;
-    }
-
-    const userId = sessionData.session.user.id;
 
     const { data: sData, error: sErr } = await supabase
       .from("surgeons")
@@ -103,8 +106,6 @@ export default function SurgeonClient() {
       if (!e.target.files || e.target.files.length === 0) return;
 
       const file = e.target.files[0];
-
-      // Basic sanity check
       if (!file.type.startsWith("image/")) {
         alert("Please choose an image file.");
         return;
@@ -143,7 +144,6 @@ export default function SurgeonClient() {
       setSurgeonPhotoUrl(publicUrl);
     } finally {
       setUploadingPhoto(false);
-      // reset input so selecting the same file again still triggers onChange
       e.target.value = "";
     }
   }
@@ -153,16 +153,13 @@ export default function SurgeonClient() {
     if (!name) return alert("Enter a procedure name.");
     if (!surgeonId) return;
 
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (!sessionData.session) {
-      window.location.href = "/login";
-      return;
-    }
+    const userId = await getUserIdOrRedirect();
+    if (!userId) return;
 
     setAdding(true);
 
     const { error } = await supabase.from("procedures").insert({
-      user_id: sessionData.session.user.id,
+      user_id: userId,
       surgeon_id: surgeonId,
       name,
       draping: "",
@@ -178,6 +175,54 @@ export default function SurgeonClient() {
     loadAll(surgeonId);
   }
 
+  async function deleteProcedure(procedureId: string, procedureName: string) {
+    const ok = confirm(`Delete procedure "${procedureName}"?`);
+    if (!ok) return;
+
+    const userId = await getUserIdOrRedirect();
+    if (!userId) return;
+
+    const { error } = await supabase
+      .from("procedures")
+      .delete()
+      .eq("id", procedureId)
+      .eq("user_id", userId);
+
+    if (error) return alert(error.message);
+
+    if (surgeonId) loadAll(surgeonId);
+  }
+
+  async function deleteThisSurgeon() {
+    if (!surgeonId || !surgeon) return;
+
+    const ok = confirm(
+      `Delete Dr. ${surgeon.first_name} ${surgeon.last_name}?\n\nThis will also delete all procedures for this surgeon.`
+    );
+    if (!ok) return;
+
+    const userId = await getUserIdOrRedirect();
+    if (!userId) return;
+
+    const { error: pErr } = await supabase
+      .from("procedures")
+      .delete()
+      .eq("user_id", userId)
+      .eq("surgeon_id", surgeonId);
+
+    if (pErr) return alert(pErr.message);
+
+    const { error: sErr } = await supabase
+      .from("surgeons")
+      .delete()
+      .eq("user_id", userId)
+      .eq("id", surgeonId);
+
+    if (sErr) return alert(sErr.message);
+
+    router.push("/");
+  }
+
   if (!surgeonId) {
     return (
       <div className="min-h-screen p-6 bg-white">
@@ -188,9 +233,7 @@ export default function SurgeonClient() {
         >
           Back
         </button>
-        <div className="mt-6 text-brand-dark font-semibold">
-          Missing surgeon id.
-        </div>
+        <div className="mt-6 text-brand-dark font-semibold">Missing surgeon id.</div>
       </div>
     );
   }
@@ -213,7 +256,6 @@ export default function SurgeonClient() {
         >
           Back
         </button>
-
         <div className="mt-6 text-brand-dark font-semibold">Surgeon not found.</div>
         {err ? <div className="mt-2 text-sm text-red-600">Error: {err}</div> : null}
       </div>
@@ -223,20 +265,32 @@ export default function SurgeonClient() {
   return (
     <div className="min-h-screen bg-white">
       <div className="px-6 pt-6 pb-2">
-        <div className="text-3xl font-black tracking-tight text-brand-dark">
-          DR.{" "}
-          <span className="text-brand-accent">
-            {surgeon.first_name} {surgeon.last_name}
-          </span>
-        </div>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="text-3xl font-black tracking-tight text-brand-dark">
+              DR.{" "}
+              <span className="text-brand-accent">
+                {surgeon.first_name} {surgeon.last_name}
+              </span>
+            </div>
 
-        <button
-          onClick={() => router.back()}
-          className="mt-2 text-brand-accent underline text-sm"
-          type="button"
-        >
-          Back
-        </button>
+            <button
+              onClick={() => router.back()}
+              className="mt-2 text-brand-accent underline text-sm"
+              type="button"
+            >
+              Back
+            </button>
+          </div>
+
+          <button
+            onClick={deleteThisSurgeon}
+            className="text-sm text-red-600 underline"
+            type="button"
+          >
+            Delete Surgeon
+          </button>
+        </div>
       </div>
 
       <div className="px-6 py-6 flex gap-6 items-center">
@@ -278,9 +332,7 @@ export default function SurgeonClient() {
           </div>
 
           {surgeon.specialty ? (
-            <div className="mt-3 text-sm text-gray-600">
-              Specialty: {surgeon.specialty}
-            </div>
+            <div className="mt-3 text-sm text-gray-600">Specialty: {surgeon.specialty}</div>
           ) : null}
         </div>
       </div>
@@ -309,13 +361,24 @@ export default function SurgeonClient() {
 
       <div className="px-6 pb-10 space-y-6">
         {procedures.map((p) => (
-          <a
-            key={p.id}
-            href={`/procedure?procedureId=${p.id}&surgeonId=${surgeonId}`}
-            className="block w-full border-4 border-gray-900 rounded-2xl py-10 text-4xl font-medium text-gray-900 text-center"
-          >
-            {p.name}
-          </a>
+          <div key={p.id} className="border-4 border-gray-900 rounded-2xl overflow-hidden">
+            <a
+              href={`/procedure?procedureId=${p.id}&surgeonId=${surgeonId}`}
+              className="block py-10 text-4xl font-medium text-gray-900 text-center"
+            >
+              {p.name}
+            </a>
+
+            <div className="border-t px-4 py-3 flex justify-center">
+              <button
+                type="button"
+                onClick={() => deleteProcedure(p.id, p.name)}
+                className="text-sm text-red-600 underline"
+              >
+                Delete procedure
+              </button>
+            </div>
+          </div>
         ))}
 
         {procedures.length === 0 ? (
