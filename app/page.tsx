@@ -116,7 +116,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen p-6 bg-gray-100">
+    <div className="min-h-screen p-6 bg-white/10">
       <div className="flex items-center justify-between mb-6"></div>
       {/* Add Surgeon Button */}
       <div className="mb-6">

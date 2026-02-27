@@ -8,7 +8,7 @@ export default function SPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center text-sm text-gray-600 bg-white/10">
+        <div className="min-h-screen flex items-center justify-center text-sm text-gray-600">
           Loading…
         </div>
       }
