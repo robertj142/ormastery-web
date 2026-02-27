@@ -61,7 +61,7 @@ export default function LoginPage() {
 
   if (checking) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-sm text-white bg-gradient-to-b from-[#00a9be] via-[#007c93] to-[#00243d]">
+      <div className="min-h-screen flex flex-col bg-[linear-gradient(135deg,_#00a9be_0%,_#007c93_45%,_#00243d_100%)]">
         Loading…
       </div>
     );
