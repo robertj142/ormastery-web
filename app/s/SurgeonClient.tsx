@@ -294,7 +294,7 @@ export default function SurgeonClient() {
   <div>
     <div className="text-sm text-gray-500">Gloves</div>
     <div className="font-semibold">
-      {surgeon.glove_size || "—"}
+      {surgeon.gloves || "—"}
     </div>
   </div>
   <div>
