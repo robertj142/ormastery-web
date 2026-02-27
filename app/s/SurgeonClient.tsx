@@ -10,6 +10,7 @@ type Surgeon = {
   first_name: string;
   last_name: string;
   specialty: string | null;
+  photo_url: string | null;
 };
 
 type Procedure = {
@@ -26,6 +27,9 @@ export default function SurgeonClient() {
   const [surgeon, setSurgeon] = useState<Surgeon | null>(null);
   const [procedures, setProcedures] = useState<Procedure[]>([]);
   const [err, setErr] = useState<string | null>(null);
+
+  const [surgeonPhotoUrl, setSurgeonPhotoUrl] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const [newProcedureName, setNewProcedureName] = useState("");
   const [adding, setAdding] = useState(false);
@@ -61,7 +65,7 @@ export default function SurgeonClient() {
 
     const { data: sData, error: sErr } = await supabase
       .from("surgeons")
-      .select("id, user_id, first_name, last_name, specialty")
+      .select("id, user_id, first_name, last_name, specialty, photo_url")
       .eq("id", id)
       .eq("user_id", userId)
       .maybeSingle();
@@ -73,6 +77,7 @@ export default function SurgeonClient() {
     }
 
     setSurgeon(sData ?? null);
+    setSurgeonPhotoUrl(sData?.photo_url ?? null);
 
     const { data: pData, error: pErr } = await supabase
       .from("procedures")
@@ -90,6 +95,57 @@ export default function SurgeonClient() {
 
     setProcedures(pData ?? []);
     setLoading(false);
+  }
+
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    try {
+      if (!surgeonId) return;
+      if (!e.target.files || e.target.files.length === 0) return;
+
+      const file = e.target.files[0];
+
+      // Basic sanity check
+      if (!file.type.startsWith("image/")) {
+        alert("Please choose an image file.");
+        return;
+      }
+
+      setUploadingPhoto(true);
+
+      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const fileName = `${surgeonId}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("surgeon-photos")
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) {
+        alert(uploadError.message);
+        return;
+      }
+
+      const { data: publicData } = supabase.storage
+        .from("surgeon-photos")
+        .getPublicUrl(fileName);
+
+      const publicUrl = publicData.publicUrl;
+
+      const { error: updateError } = await supabase
+        .from("surgeons")
+        .update({ photo_url: publicUrl })
+        .eq("id", surgeonId);
+
+      if (updateError) {
+        alert(updateError.message);
+        return;
+      }
+
+      setSurgeonPhotoUrl(publicUrl);
+    } finally {
+      setUploadingPhoto(false);
+      // reset input so selecting the same file again still triggers onChange
+      e.target.value = "";
+    }
   }
 
   async function addProcedure() {
@@ -184,8 +240,29 @@ export default function SurgeonClient() {
       </div>
 
       <div className="px-6 py-6 flex gap-6 items-center">
-        <div className="h-36 w-36 rounded-xl border-4 border-brand-dark overflow-hidden bg-gray-100 flex items-center justify-center text-gray-500 text-sm">
-          Photo
+        <div className="flex flex-col items-center">
+          <div className="h-36 w-36 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center text-gray-500 text-sm">
+            {surgeonPhotoUrl ? (
+              <img
+                src={surgeonPhotoUrl}
+                alt="Surgeon"
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              "No Photo"
+            )}
+          </div>
+
+          <label className="mt-3 text-sm text-brand-accent underline cursor-pointer">
+            {uploadingPhoto ? "Uploading..." : "Upload photo"}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoUpload}
+              className="hidden"
+              disabled={uploadingPhoto}
+            />
+          </label>
         </div>
 
         <div className="flex-1">
