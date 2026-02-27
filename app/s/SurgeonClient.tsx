@@ -114,7 +114,6 @@ export default function SurgeonClient() {
       }
 
       setUploadingPhoto(true);
-
       await requireSession();
 
       const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
@@ -183,7 +182,9 @@ export default function SurgeonClient() {
   }
 
   async function deleteProcedure(procId: string, procName: string) {
-    const ok = window.confirm(`Delete procedure "${procName}"?\nThis cannot be undone.`);
+    const ok = window.confirm(
+      `Are you sure you want to delete "${procName}"?\nThis cannot be undone.`
+    );
     if (!ok) return;
 
     try {
@@ -209,16 +210,15 @@ export default function SurgeonClient() {
   async function deleteSurgeon() {
     if (!surgeonId || !surgeon) return;
 
-    const typed = window.prompt(
-      `This will permanently delete Dr. ${surgeon.first_name} ${surgeon.last_name} and ALL procedures.\n\nType DELETE to confirm:`
+    const ok = window.confirm(
+      `Are you sure you want to delete Dr. ${surgeon.first_name} ${surgeon.last_name}?\n\nThis will also delete ALL procedures for this surgeon.`
     );
-    if (typed !== "DELETE") return;
+    if (!ok) return;
 
     try {
       setDeletingSurgeon(true);
       const session = await requireSession();
 
-      // 1) delete procedures for this surgeon (scoped to user)
       const { error: delProcsErr } = await supabase
         .from("procedures")
         .delete()
@@ -227,7 +227,6 @@ export default function SurgeonClient() {
 
       if (delProcsErr) throw new Error(delProcsErr.message);
 
-      // 2) delete surgeon (scoped to user)
       const { error: delSurgeonErr } = await supabase
         .from("surgeons")
         .delete()
@@ -235,18 +234,6 @@ export default function SurgeonClient() {
         .eq("user_id", session.user.id);
 
       if (delSurgeonErr) throw new Error(delSurgeonErr.message);
-
-      // optional: delete photo from storage (not required, but nice)
-      try {
-        const extGuess = surgeonPhotoUrl?.split(".").pop()?.split("?")[0];
-        if (extGuess) {
-          await supabase.storage
-            .from("surgeon-photos")
-            .remove([`${surgeonId}.${extGuess}`]);
-        }
-      } catch {
-        // ignore storage cleanup failures
-      }
 
       router.push("/");
     } catch (e: any) {
@@ -304,50 +291,67 @@ export default function SurgeonClient() {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="px-6 pt-6 pb-2">
+      {/* Top row: Back left, Delete right */}
+      <div className="px-6 pt-6 pb-2 flex items-center justify-between">
+        <button
+          onClick={() => router.back()}
+          className="text-brand-accent underline text-sm"
+          type="button"
+        >
+          Back
+        </button>
+
+        <button
+          onClick={deleteSurgeon}
+          disabled={deletingSurgeon}
+          className="text-red-600 underline text-sm disabled:opacity-60"
+          type="button"
+        >
+          {deletingSurgeon ? "Deleting..." : "Delete surgeon"}
+        </button>
+      </div>
+
+      {/* Name */}
+      <div className="px-6 pb-2">
         <div className="text-3xl font-black tracking-tight text-brand-dark">
           DR.{" "}
           <span className="text-brand-accent">
             {surgeon.first_name} {surgeon.last_name}
           </span>
         </div>
-
-        <div className="mt-2 flex items-center gap-4">
-          <button
-            onClick={() => router.back()}
-            className="text-brand-accent underline text-sm"
-            type="button"
-          >
-            Back
-          </button>
-
-          <button
-            onClick={deleteSurgeon}
-            disabled={deletingSurgeon}
-            className="text-red-600 underline text-sm disabled:opacity-60"
-            type="button"
-            title="Deletes this surgeon and all procedures"
-          >
-            {deletingSurgeon ? "Deleting..." : "Delete surgeon"}
-          </button>
-        </div>
       </div>
 
+      {/* Photo + details */}
       <div className="px-6 py-6 flex gap-6 items-center">
         <div className="flex flex-col items-center">
-          <div className="h-36 w-36 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center text-gray-500 text-sm">
-            {surgeonPhotoUrl ? (
-              <img
-                src={surgeonPhotoUrl}
-                alt="Surgeon"
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              "No Photo"
-            )}
+          {/* Photo stack */}
+          <div className="relative h-44 w-44">
+            {/* Background accent graphic */}
+            <img
+              src="/photo-accent.png"
+              alt=""
+              className="absolute inset-0 h-full w-full object-contain pointer-events-none select-none"
+            />
+
+            {/* Surgeon photo on top */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="h-32 w-32 rounded-full overflow-hidden bg-gray-100">
+                {surgeonPhotoUrl ? (
+                  <img
+                    src={surgeonPhotoUrl}
+                    alt="Surgeon"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center text-gray-500 text-sm">
+                    No Photo
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
-          <label className="mt-3 text-sm text-brand-accent underline cursor-pointer">
+          <label className="mt-2 text-sm text-brand-accent underline cursor-pointer">
             {uploadingPhoto ? "Uploading..." : "Upload photo"}
             <input
               type="file"
@@ -357,6 +361,13 @@ export default function SurgeonClient() {
               disabled={uploadingPhoto}
             />
           </label>
+
+          <a
+            className="mt-2 text-sm text-brand-accent underline"
+            href={`/s/gloves?surgeonId=${surgeonId}`}
+          >
+            Edit Gloves/Gown
+          </a>
         </div>
 
         <div className="flex-1">
@@ -376,18 +387,10 @@ export default function SurgeonClient() {
               Specialty: {surgeon.specialty}
             </div>
           ) : null}
-
-          <div className="mt-3">
-            <a
-              className="text-brand-accent underline text-sm"
-              href={`/s/gloves?surgeonId=${surgeonId}`}
-            >
-              Edit Gloves/Gown
-            </a>
-          </div>
         </div>
       </div>
 
+      {/* Add procedure */}
       <div className="px-6 pb-6">
         <div className="bg-gray-50 border rounded-2xl p-4 flex flex-col gap-3">
           <div className="text-sm font-semibold text-brand-dark">
@@ -412,6 +415,7 @@ export default function SurgeonClient() {
         </div>
       </div>
 
+      {/* Procedures */}
       <div className="px-6 pb-10 space-y-6">
         {procedures.map((p) => (
           <div key={p.id} className="relative">
