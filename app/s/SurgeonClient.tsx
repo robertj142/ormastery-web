@@ -247,14 +247,15 @@ export default function SurgeonClient() {
         <div className="flex flex-col items-center">
           {/* PHOTO AREA WITH ACCENT GRAPHIC BEHIND */}
           <div className="relative h-48 w-48 flex items-center justify-center">
-            {/* IMPORTANT: Put your teal background image at: /public/photo-accent.png */}
+            {/* Background accent goes BEHIND */}
             <img
               src="/photo-accent.png"
               alt=""
-              className="absolute inset-0 h-full w-full object-contain pointer-events-none"
+              className="absolute inset-0 h-full w-full object-contain pointer-events-none select-none z-0"
             />
 
-            <div className="h-40 w-40 rounded-full overflow-hidden bg-white shadow-md flex items-center justify-center">
+            {/* Foreground photo goes ON TOP */}
+            <div className="relative z-10 h-40 w-40 rounded-full overflow-hidden bg-white shadow-md flex items-center justify-center">
               {surgeonPhotoUrl ? (
                 <img
                   src={surgeonPhotoUrl}
