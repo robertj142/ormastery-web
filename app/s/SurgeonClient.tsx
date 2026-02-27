@@ -300,7 +300,7 @@ export default function SurgeonClient() {
   <div>
     <div className="text-sm text-gray-500">Gown</div>
     <div className="font-semibold">
-      {surgeon.gown_size || "—"}
+      {surgeon.gown || "—"}
     </div>
   </div>
 </div>
