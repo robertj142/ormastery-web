@@ -15,8 +15,11 @@ export default function Home() {
   const [isAuthed, setIsAuthed] = useState(false);
 
   const [surgeons, setSurgeons] = useState<Surgeon[]>([]);
+
+  const [showModal, setShowModal] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -60,16 +63,24 @@ export default function Home() {
     const ln = lastName.trim();
     if (!fn || !ln) return alert("Add first and last name.");
 
+    setAdding(true);
+
     const { error } = await supabase.from("surgeons").insert({
       user_id: data.user.id,
       first_name: fn,
       last_name: ln,
     });
 
-    if (error) return alert(error.message);
+    setAdding(false);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
 
     setFirstName("");
     setLastName("");
+    setShowModal(false);
     fetchSurgeons();
   }
 
@@ -106,11 +117,9 @@ export default function Home() {
 
   return (
     <div className="min-h-screen p-6 bg-gray-100">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <div className="text-xs text-red-600 font-bold">
-            VERSION: 2026-02-25-A
-          </div>
+      <div className="flex items-center justify-between mb-6">
+        <div className="text-xs text-red-600 font-bold">
+          VERSION: 2026-02-25-A
         </div>
 
         <button
@@ -121,29 +130,17 @@ export default function Home() {
         </button>
       </div>
 
-      <div className="mb-6 bg-white rounded shadow p-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <input
-            className="border p-2 rounded w-full"
-            placeholder="First name"
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-          />
-          <input
-            className="border p-2 rounded w-full"
-            placeholder="Last name"
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-          />
-          <button
-            onClick={addSurgeon}
-            className="bg-brand-dark text-white px-4 py-2 rounded w-full sm:w-auto"
-          >
-            Add Surgeon
-          </button>
-        </div>
+      {/* Add Surgeon Button */}
+      <div className="mb-6">
+        <button
+          onClick={() => setShowModal(true)}
+          className="bg-brand-dark text-white px-5 py-3 rounded-xl font-semibold"
+        >
+          + Add Surgeon
+        </button>
       </div>
 
+      {/* Surgeon List */}
       <ul className="space-y-3">
         {surgeons.map((s) => (
           <li key={s.id}>
@@ -158,6 +155,47 @@ export default function Home() {
           </li>
         ))}
       </ul>
+
+      {/* Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
+            <div className="text-lg font-bold text-brand-dark mb-4">
+              Add Surgeon
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <input
+                className="border p-3 rounded-xl"
+                placeholder="First name"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+              />
+              <input
+                className="border p-3 rounded-xl"
+                placeholder="Last name"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+              />
+
+              <button
+                onClick={addSurgeon}
+                disabled={adding}
+                className="bg-brand-accent text-white py-3 rounded-xl font-semibold disabled:opacity-60"
+              >
+                {adding ? "Adding…" : "Create"}
+              </button>
+
+              <button
+                onClick={() => setShowModal(false)}
+                className="text-sm text-gray-500 mt-2"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
