@@ -11,8 +11,8 @@ type Surgeon = {
   last_name: string;
   specialty: string | null;
   photo_url: string | null;
-  gloves: string | null;
-  gown: string | null;
+  gloves?: string | null;
+  gown?: string | null;
 };
 
 type Procedure = {
@@ -36,6 +36,11 @@ export default function SurgeonClient() {
   const [newProcedureName, setNewProcedureName] = useState("");
   const [adding, setAdding] = useState(false);
 
+  const [deletingSurgeon, setDeletingSurgeon] = useState(false);
+  const [deletingProcedureId, setDeletingProcedureId] = useState<string | null>(
+    null
+  );
+
   useEffect(() => {
     if (!surgeonId) {
       setLoading(false);
@@ -45,58 +50,55 @@ export default function SurgeonClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [surgeonId]);
 
+  async function requireSession() {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw new Error(error.message);
+    if (!data.session) {
+      window.location.href = "/login";
+      throw new Error("Not authenticated");
+    }
+    return data.session;
+  }
+
   async function loadAll(id: string) {
     setLoading(true);
     setErr(null);
 
-    const { data: sessionData, error: sessionErr } =
-      await supabase.auth.getSession();
+    try {
+      const session = await requireSession();
+      const userId = session.user.id;
 
-    if (sessionErr) {
-      setErr(sessionErr.message);
-      setLoading(false);
-      return;
-    }
+      const { data: sData, error: sErr } = await supabase
+        .from("surgeons")
+        .select(
+          "id, user_id, first_name, last_name, specialty, photo_url, gloves, gown"
+        )
+        .eq("id", id)
+        .eq("user_id", userId)
+        .maybeSingle();
 
-    if (!sessionData.session) {
-      window.location.href = "/login";
-      return;
-    }
+      if (sErr) throw new Error(sErr.message);
 
-    const userId = sessionData.session.user.id;
+      setSurgeon(sData ?? null);
+      setSurgeonPhotoUrl(sData?.photo_url ?? null);
 
-    const { data: sData, error: sErr } = await supabase
-      .from("surgeons")
-      .select("id, user_id, first_name, last_name, specialty, photo_url, gloves, gown")
-      .eq("id", id)
-      .eq("user_id", userId)
-      .maybeSingle();
+      const { data: pData, error: pErr } = await supabase
+        .from("procedures")
+        .select("id, name")
+        .eq("surgeon_id", id)
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
 
-    if (sErr) {
-      setErr(sErr.message);
-      setLoading(false);
-      return;
-    }
+      if (pErr) throw new Error(pErr.message);
 
-    setSurgeon(sData ?? null);
-    setSurgeonPhotoUrl(sData?.photo_url ?? null);
-
-    const { data: pData, error: pErr } = await supabase
-      .from("procedures")
-      .select("id, name")
-      .eq("surgeon_id", id)
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
-
-    if (pErr) {
-      setErr(pErr.message);
+      setProcedures(pData ?? []);
+    } catch (e: any) {
+      setErr(e?.message ?? "Unknown error");
       setProcedures([]);
+      setSurgeon(null);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setProcedures(pData ?? []);
-    setLoading(false);
   }
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -112,6 +114,8 @@ export default function SurgeonClient() {
       }
 
       setUploadingPhoto(true);
+
+      await requireSession();
 
       const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
       const fileName = `${surgeonId}.${ext}`;
@@ -153,29 +157,103 @@ export default function SurgeonClient() {
     if (!name) return alert("Enter a procedure name.");
     if (!surgeonId) return;
 
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (!sessionData.session) {
-      window.location.href = "/login";
-      return;
+    try {
+      const session = await requireSession();
+
+      setAdding(true);
+
+      const { error } = await supabase.from("procedures").insert({
+        user_id: session.user.id,
+        surgeon_id: surgeonId,
+        name,
+        draping: "",
+        instruments_trays: "",
+        workflow_notes: "",
+      });
+
+      if (error) throw new Error(error.message);
+
+      setNewProcedureName("");
+      loadAll(surgeonId);
+    } catch (e: any) {
+      alert(e?.message ?? "Failed to add procedure");
+    } finally {
+      setAdding(false);
     }
+  }
 
-    setAdding(true);
+  async function deleteProcedure(procId: string, procName: string) {
+    const ok = window.confirm(`Delete procedure "${procName}"?\nThis cannot be undone.`);
+    if (!ok) return;
 
-    const { error } = await supabase.from("procedures").insert({
-      user_id: sessionData.session.user.id,
-      surgeon_id: surgeonId,
-      name,
-      draping: "",
-      instruments_trays: "",
-      workflow_notes: "",
-    });
+    try {
+      setDeletingProcedureId(procId);
+      const session = await requireSession();
 
-    setAdding(false);
+      const { error } = await supabase
+        .from("procedures")
+        .delete()
+        .eq("id", procId)
+        .eq("user_id", session.user.id);
 
-    if (error) return alert(error.message);
+      if (error) throw new Error(error.message);
 
-    setNewProcedureName("");
-    loadAll(surgeonId);
+      setProcedures((prev) => prev.filter((p) => p.id !== procId));
+    } catch (e: any) {
+      alert(e?.message ?? "Failed to delete procedure");
+    } finally {
+      setDeletingProcedureId(null);
+    }
+  }
+
+  async function deleteSurgeon() {
+    if (!surgeonId || !surgeon) return;
+
+    const typed = window.prompt(
+      `This will permanently delete Dr. ${surgeon.first_name} ${surgeon.last_name} and ALL procedures.\n\nType DELETE to confirm:`
+    );
+    if (typed !== "DELETE") return;
+
+    try {
+      setDeletingSurgeon(true);
+      const session = await requireSession();
+
+      // 1) delete procedures for this surgeon (scoped to user)
+      const { error: delProcsErr } = await supabase
+        .from("procedures")
+        .delete()
+        .eq("surgeon_id", surgeonId)
+        .eq("user_id", session.user.id);
+
+      if (delProcsErr) throw new Error(delProcsErr.message);
+
+      // 2) delete surgeon (scoped to user)
+      const { error: delSurgeonErr } = await supabase
+        .from("surgeons")
+        .delete()
+        .eq("id", surgeonId)
+        .eq("user_id", session.user.id);
+
+      if (delSurgeonErr) throw new Error(delSurgeonErr.message);
+
+      // optional: delete photo from storage (not required, but nice)
+      try {
+        const extGuess = surgeonPhotoUrl?.split(".").pop()?.split("?")[0];
+        if (extGuess) {
+          await supabase.storage
+            .from("surgeon-photos")
+            .remove([`${surgeonId}.${extGuess}`]);
+        }
+      } catch {
+        // ignore storage cleanup failures
+      }
+
+      router.push("/");
+    } catch (e: any) {
+      alert(e?.message ?? "Failed to delete surgeon");
+    } finally {
+      setDeletingSurgeon(false);
+    }
   }
 
   if (!surgeonId) {
@@ -226,7 +304,6 @@ export default function SurgeonClient() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Title + Back */}
       <div className="px-6 pt-6 pb-2">
         <div className="text-3xl font-black tracking-tight text-brand-dark">
           DR.{" "}
@@ -235,39 +312,39 @@ export default function SurgeonClient() {
           </span>
         </div>
 
-        <button
-          onClick={() => router.back()}
-          className="mt-2 text-brand-accent underline text-sm"
-          type="button"
-        >
-          Back
-        </button>
+        <div className="mt-2 flex items-center gap-4">
+          <button
+            onClick={() => router.back()}
+            className="text-brand-accent underline text-sm"
+            type="button"
+          >
+            Back
+          </button>
+
+          <button
+            onClick={deleteSurgeon}
+            disabled={deletingSurgeon}
+            className="text-red-600 underline text-sm disabled:opacity-60"
+            type="button"
+            title="Deletes this surgeon and all procedures"
+          >
+            {deletingSurgeon ? "Deleting..." : "Delete surgeon"}
+          </button>
+        </div>
       </div>
 
-      {/* Photo + Gloves/Gown */}
       <div className="px-6 py-6 flex gap-6 items-center">
         <div className="flex flex-col items-center">
-          {/* PHOTO AREA WITH ACCENT GRAPHIC BEHIND */}
-          <div className="relative h-48 w-48 flex items-center justify-center">
-            {/* Background accent goes BEHIND */}
-            <img
-              src="/photo-accent.png"
-              alt=""
-              className="absolute inset-0 h-full w-full object-contain pointer-events-none select-none z-0"
-            />
-
-            {/* Foreground photo goes ON TOP */}
-            <div className="relative z-10 h-40 w-40 rounded-full overflow-hidden bg-white shadow-md flex items-center justify-center">
-              {surgeonPhotoUrl ? (
-                <img
-                  src={surgeonPhotoUrl}
-                  alt="Surgeon"
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <span className="text-gray-500 text-sm">No Photo</span>
-              )}
-            </div>
+          <div className="h-36 w-36 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center text-gray-500 text-sm">
+            {surgeonPhotoUrl ? (
+              <img
+                src={surgeonPhotoUrl}
+                alt="Surgeon"
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              "No Photo"
+            )}
           </div>
 
           <label className="mt-3 text-sm text-brand-accent underline cursor-pointer">
@@ -280,40 +357,37 @@ export default function SurgeonClient() {
               disabled={uploadingPhoto}
             />
           </label>
-
-          <a
-  href={`/s/gloves?id=${surgeonId}`}
-  className="mt-2 text-sm text-brand-accent underline"
->
-  Edit Gloves/Gown
-</a>
         </div>
 
         <div className="flex-1">
           <div className="flex gap-10 text-lg text-gray-900">
-  <div>
-    <div className="text-sm text-gray-500">Gloves</div>
-    <div className="font-semibold">
-      {surgeon.gloves || "—"}
-    </div>
-  </div>
-  <div>
-    <div className="text-sm text-gray-500">Gown</div>
-    <div className="font-semibold">
-      {surgeon.gown || "—"}
-    </div>
-  </div>
-</div>
+            <div>
+              <div className="text-sm text-gray-500">Gloves</div>
+              <div className="font-semibold">{surgeon.gloves ?? "—"}</div>
+            </div>
+            <div>
+              <div className="text-sm text-gray-500">Gown</div>
+              <div className="font-semibold">{surgeon.gown ?? "—"}</div>
+            </div>
+          </div>
 
           {surgeon.specialty ? (
             <div className="mt-3 text-sm text-gray-600">
               Specialty: {surgeon.specialty}
             </div>
           ) : null}
+
+          <div className="mt-3">
+            <a
+              className="text-brand-accent underline text-sm"
+              href={`/s/gloves?surgeonId=${surgeonId}`}
+            >
+              Edit Gloves/Gown
+            </a>
+          </div>
         </div>
       </div>
 
-      {/* Add Procedure */}
       <div className="px-6 pb-6">
         <div className="bg-gray-50 border rounded-2xl p-4 flex flex-col gap-3">
           <div className="text-sm font-semibold text-brand-dark">
@@ -338,16 +412,25 @@ export default function SurgeonClient() {
         </div>
       </div>
 
-      {/* Procedures List */}
       <div className="px-6 pb-10 space-y-6">
         {procedures.map((p) => (
-          <a
-            key={p.id}
-            href={`/procedure?procedureId=${p.id}&surgeonId=${surgeonId}`}
-            className="block w-full border-4 border-gray-900 rounded-2xl py-10 text-4xl font-medium text-gray-900 text-center"
-          >
-            {p.name}
-          </a>
+          <div key={p.id} className="relative">
+            <a
+              href={`/procedure?procedureId=${p.id}&surgeonId=${surgeonId}`}
+              className="block w-full border-4 border-gray-900 rounded-2xl py-10 text-4xl font-medium text-gray-900 text-center"
+            >
+              {p.name}
+            </a>
+
+            <button
+              onClick={() => deleteProcedure(p.id, p.name)}
+              disabled={deletingProcedureId === p.id}
+              className="absolute right-4 top-4 text-sm text-red-600 underline disabled:opacity-60"
+              type="button"
+            >
+              {deletingProcedureId === p.id ? "Deleting..." : "Delete"}
+            </button>
+          </div>
         ))}
 
         {procedures.length === 0 ? (
