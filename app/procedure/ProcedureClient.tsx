@@ -119,7 +119,7 @@ export default function ProcedureClient() {
   }
 
   return (
-    <div className="min-h-screen bg-white p-6">
+    <div className="min-h-screen bg-transparent p-6">
       <div className="flex items-center justify-between mb-4">
         <a href={surgeonId ? `/s?id=${surgeonId}` : "/"} className="text-blue-700 underline">
           Back

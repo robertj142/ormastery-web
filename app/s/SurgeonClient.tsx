@@ -245,7 +245,7 @@ export default function SurgeonClient() {
 
   if (!surgeonId) {
     return (
-      <div className="min-h-screen p-6 bg-white">
+      <div className="min-h-screen p-6 bg-transparent">
         <button
           onClick={() => router.back()}
           className="text-brand-accent underline text-sm"
