@@ -11,6 +11,8 @@ type Surgeon = {
   last_name: string;
   specialty: string | null;
   photo_url: string | null;
+  gloves: string | null;
+  gown: string | null;
 };
 
 type Procedure = {
@@ -65,7 +67,7 @@ export default function SurgeonClient() {
 
     const { data: sData, error: sErr } = await supabase
       .from("surgeons")
-      .select("id, user_id, first_name, last_name, specialty, photo_url")
+      .select("id, user_id, first_name, last_name, specialty, photo_url, gloves, gown")
       .eq("id", id)
       .eq("user_id", userId)
       .maybeSingle();
@@ -289,15 +291,19 @@ export default function SurgeonClient() {
 
         <div className="flex-1">
           <div className="flex gap-10 text-lg text-gray-900">
-            <div>
-              <div className="text-sm text-gray-500">Gloves</div>
-              <div className="font-semibold">—</div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-500">Gown</div>
-              <div className="font-semibold">—</div>
-            </div>
-          </div>
+  <div>
+    <div className="text-sm text-gray-500">Gloves</div>
+    <div className="font-semibold">
+      {surgeon.glove_size || "—"}
+    </div>
+  </div>
+  <div>
+    <div className="text-sm text-gray-500">Gown</div>
+    <div className="font-semibold">
+      {surgeon.gown_size || "—"}
+    </div>
+  </div>
+</div>
 
           {surgeon.specialty ? (
             <div className="mt-3 text-sm text-gray-600">
