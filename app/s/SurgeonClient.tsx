@@ -335,7 +335,7 @@ export default function SurgeonClient() {
 
             {/* Surgeon photo on top */}
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="h-32 w-32 rounded-full overflow-hidden bg-gray-100">
+              <div className="h-42 w-42 rounded-full overflow-hidden bg-gray-100">
                 {surgeonPhotoUrl ? (
                   <img
                     src={surgeonPhotoUrl}
