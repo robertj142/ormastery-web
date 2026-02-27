@@ -279,13 +279,12 @@ export default function SurgeonClient() {
             />
           </label>
 
-          <button
-            type="button"
-            className="mt-2 text-sm text-brand-accent underline"
-            onClick={() => alert("Gloves/Gown edit coming next")}
-          >
-            Edit Gloves/Gown
-          </button>
+          <a
+  href={`/s/gloves?id=${surgeonId}`}
+  className="mt-2 text-sm text-brand-accent underline"
+>
+  Edit Gloves/Gown
+</a>
         </div>
 
         <div className="flex-1">
