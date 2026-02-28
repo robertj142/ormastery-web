@@ -12,7 +12,6 @@ type ProcedureRow = {
   draping: string | null;
   instruments_trays: string | null;
   workflow_notes: string | null;
-  setup_photos: string[] | null;
 };
 
 export default function ProcedureClient() {
@@ -41,10 +40,21 @@ export default function ProcedureClient() {
 
   // autoscroll controls inside modal
   const [autoScrollOn, setAutoScrollOn] = useState(true);
-  const [autoScrollSpeed, setAutoScrollSpeed] = useState(18); // px/sec-ish feel
+  const [autoScrollSpeed, setAutoScrollSpeed] = useState(18); // px/sec
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
   const lastTsRef = useRef<number | null>(null);
+
+  const backHref = surgeonId ? `/s?id=${surgeonId}` : "/";
+
+  useEffect(() => {
+    if (!procedureId) {
+      setLoading(false);
+      return;
+    }
+    loadProcedure(procedureId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [procedureId]);
 
   const sectionTitle = useMemo(() => {
     if (openSection === "draping") return "Draping";
@@ -62,28 +72,19 @@ export default function ProcedureClient() {
   }, [openSection, proc]);
 
   useEffect(() => {
-    if (!procedureId) {
-      setLoading(false);
-      return;
-    }
-    loadProcedure(procedureId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [procedureId]);
-
-  useEffect(() => {
-    // reset autoscroll position when modal opens
     if (openSection && scrollRef.current) {
       scrollRef.current.scrollTop = 0;
     }
   }, [openSection]);
 
   useEffect(() => {
-    // Autoscroll loop when modal open + toggle on
     if (!openSection) return;
+
     if (!autoScrollOn) {
       stopAutoScroll();
       return;
     }
+
     startAutoScroll();
     return () => stopAutoScroll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -99,32 +100,23 @@ export default function ProcedureClient() {
     stopAutoScroll();
 
     const tick = (ts: number) => {
-      if (!scrollRef.current) return;
+      const el = scrollRef.current;
+      if (!el) return;
 
       const last = lastTsRef.current ?? ts;
       const dt = ts - last;
       lastTsRef.current = ts;
 
-      const el = scrollRef.current;
-
-      // speed is "px per second" feeling
-      const delta = (autoScrollSpeed * dt) / 1000;
-
       const maxScroll = el.scrollHeight - el.clientHeight;
+      if (maxScroll > 0) {
+        const delta = (autoScrollSpeed * dt) / 1000;
+        el.scrollTop = Math.min(maxScroll, el.scrollTop + delta);
 
-      if (maxScroll <= 0) {
-        rafRef.current = requestAnimationFrame(tick);
-        return;
-      }
-
-      el.scrollTop = Math.min(maxScroll, el.scrollTop + delta);
-
-      // if we reached bottom, loop back to top after a tiny pause
-      if (el.scrollTop >= maxScroll - 1) {
-        // tiny “breath”
-        setTimeout(() => {
-          if (scrollRef.current) scrollRef.current.scrollTop = 0;
-        }, 700);
+        if (el.scrollTop >= maxScroll - 1) {
+          setTimeout(() => {
+            if (scrollRef.current) scrollRef.current.scrollTop = 0;
+          }, 700);
+        }
       }
 
       rafRef.current = requestAnimationFrame(tick);
@@ -153,25 +145,19 @@ export default function ProcedureClient() {
 
       const { data, error } = await supabase
         .from("procedures")
-        .select(
-          "id, user_id, surgeon_id, name, draping, instruments_trays, workflow_notes, setup_photos"
-        )
+        .select("id, user_id, surgeon_id, name, draping, instruments_trays, workflow_notes")
         .eq("id", id)
         .eq("user_id", userId)
         .maybeSingle();
 
       if (error) throw new Error(error.message);
-      if (!data) {
-        setProc(null);
-        setLoading(false);
-        return;
-      }
 
-      setProc(data as ProcedureRow);
-      setName(data.name ?? "");
-      setDraping(data.draping ?? "");
-      setInstrumentsTrays(data.instruments_trays ?? "");
-      setWorkflowNotes(data.workflow_notes ?? "");
+      setProc((data as ProcedureRow) ?? null);
+
+      setName(data?.name ?? "");
+      setDraping(data?.draping ?? "");
+      setInstrumentsTrays(data?.instruments_trays ?? "");
+      setWorkflowNotes(data?.workflow_notes ?? "");
     } catch (e: any) {
       setErr(e?.message ?? "Unknown error");
       setProc(null);
@@ -185,7 +171,7 @@ export default function ProcedureClient() {
 
     try {
       setSaving(true);
-      await requireSession();
+      const session = await requireSession();
 
       const { error } = await supabase
         .from("procedures")
@@ -194,8 +180,10 @@ export default function ProcedureClient() {
           draping,
           instruments_trays: instrumentsTrays,
           workflow_notes: workflowNotes,
+          updated_at: new Date().toISOString(),
         })
-        .eq("id", procedureId);
+        .eq("id", procedureId)
+        .eq("user_id", session.user.id);
 
       if (error) throw new Error(error.message);
 
@@ -227,12 +215,7 @@ export default function ProcedureClient() {
 
       if (error) throw new Error(error.message);
 
-      // go back to surgeon page
-      if (surgeonId) {
-        router.push(`/s?id=${surgeonId}`);
-      } else {
-        router.push("/");
-      }
+      router.push(backHref);
     } catch (e: any) {
       alert(e?.message ?? "Failed to delete");
     } finally {
@@ -251,22 +234,14 @@ export default function ProcedureClient() {
     stopAutoScroll();
   }
 
-  const backHref = surgeonId ? `/s?id=${surgeonId}` : "/";
-
   if (!procedureId) {
     return (
       <div className="min-h-[calc(100vh-72px)] bg-transparent flex items-center justify-center px-6 py-10">
         <div className="w-full max-w-md rounded-2xl bg-white/10 border border-white/20 shadow-xl backdrop-blur-md p-6">
-          <button
-            onClick={() => router.back()}
-            className="text-white underline text-sm"
-            type="button"
-          >
+          <button onClick={() => router.back()} className="text-white underline text-sm" type="button">
             Back
           </button>
-          <div className="mt-6 text-white font-semibold">
-            Missing procedureId.
-          </div>
+          <div className="mt-6 text-white font-semibold">Missing procedureId.</div>
         </div>
       </div>
     );
@@ -297,7 +272,6 @@ export default function ProcedureClient() {
   return (
     <div className="min-h-[calc(100vh-72px)] bg-transparent flex items-start justify-center px-6 py-10">
       <div className="w-full max-w-3xl rounded-2xl bg-white/10 border border-white/20 shadow-xl backdrop-blur-md p-6">
-        {/* Top row */}
         <div className="flex items-center justify-between">
           <a href={backHref} className="text-white underline text-sm">
             Back
@@ -313,7 +287,6 @@ export default function ProcedureClient() {
           </button>
         </div>
 
-        {/* Title */}
         <div className="mt-4">
           <div className="text-white text-xs font-semibold tracking-wide opacity-80">
             PROCEDURE
@@ -338,12 +311,10 @@ export default function ProcedureClient() {
           </div>
 
           <div className="mt-2 text-sm text-white/75">
-            Tap the expand icon to open a “scrub view” window for quick reading in
-            the room.
+            Tap ⤢ to open a “scrub view” window for quick reading in the room.
           </div>
         </div>
 
-        {/* Sections */}
         <div className="mt-6 space-y-4">
           <SectionCard
             title="Draping"
@@ -366,25 +337,18 @@ export default function ProcedureClient() {
             value={workflowNotes}
             onChange={setWorkflowNotes}
             onExpand={() => openScrub("workflow")}
-            placeholder="e.g., Time-out specifics, sequence, positioning quirks, surgeon preferences…"
+            placeholder="e.g., Sequence, positioning, surgeon quirks, “don’t forget” notes…"
           />
         </div>
 
-        {/* Footer hint */}
         <div className="mt-8 text-center text-xs text-white/60">
           ORMastery • Keep it clear • Keep it repeatable
         </div>
       </div>
 
-      {/* SCRUB VIEW MODAL */}
       {openSection ? (
-        <div
-          className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4"
-          role="dialog"
-          aria-modal="true"
-        >
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4" role="dialog" aria-modal="true">
           <div className="w-full max-w-2xl rounded-2xl bg-white/10 border border-white/20 shadow-2xl backdrop-blur-md overflow-hidden">
-            {/* modal header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/15">
               <div>
                 <div className="text-xs text-white/70 tracking-wide font-semibold">
@@ -422,7 +386,6 @@ export default function ProcedureClient() {
               </div>
             </div>
 
-            {/* modal content */}
             <div className="p-5">
               <div className="rounded-xl bg-white/10 border border-white/15 p-4">
                 <div
@@ -438,7 +401,7 @@ export default function ProcedureClient() {
               </div>
 
               <div className="mt-3 text-xs text-white/60">
-                Tip: Hovering over the text pauses auto-scroll. Un-hover resumes.
+                Hover pauses auto-scroll. Un-hover resumes.
               </div>
             </div>
           </div>
@@ -448,7 +411,6 @@ export default function ProcedureClient() {
   );
 }
 
-/** Reusable section card */
 function SectionCard(props: {
   title: string;
   value: string;
@@ -462,7 +424,7 @@ function SectionCard(props: {
         <div>
           <div className="text-white text-sm font-semibold">{props.title}</div>
           <div className="text-white/70 text-xs mt-1">
-            Keep it bullet-ish and fast to scan.
+            Keep it tight and readable.
           </div>
         </div>
 
