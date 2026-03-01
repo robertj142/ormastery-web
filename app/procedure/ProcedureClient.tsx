@@ -37,12 +37,10 @@ export default function ProcedureClient() {
   const [workflow, setWorkflow] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Photos
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
 
-  // Modal viewer
   const [openSection, setOpenSection] = useState<SectionKey | null>(null);
 
   // Autoscroll (iPhone-safe)
@@ -253,7 +251,6 @@ export default function ProcedureClient() {
 
       const files = Array.from(e.target.files);
 
-      // Validate
       for (const f of files) {
         if (!f.type.startsWith("image/")) {
           alert("Only image files are allowed.");
@@ -270,7 +267,6 @@ export default function ProcedureClient() {
             ? crypto.randomUUID()
             : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-        // IMPORTANT: store under userId folder so storage RLS policies work
         const storagePath = `${userId}/${procedureId}/${uuid}.${ext}`;
 
         const { error: uploadError } = await supabase.storage
@@ -320,14 +316,19 @@ export default function ProcedureClient() {
       const session = await requireSession();
       const userId = session.user.id;
 
-      // delete from storage
-      const { error: storageErr } = await supabase.storage
-        .from("procedure-photos")
-        .remove([photo.storage_path]);
+      // If storage_path looks like a URL (old rows), skip storage delete
+      const looksLikeUrl =
+        photo.storage_path.startsWith("http://") ||
+        photo.storage_path.startsWith("https://");
 
-      if (storageErr) throw new Error(storageErr.message);
+      if (!looksLikeUrl) {
+        const { error: storageErr } = await supabase.storage
+          .from("procedure-photos")
+          .remove([photo.storage_path]);
 
-      // delete row
+        if (storageErr) throw new Error(storageErr.message);
+      }
+
       const { error: rowErr } = await supabase
         .from("procedure_photos")
         .delete()
@@ -377,9 +378,7 @@ export default function ProcedureClient() {
           Back
         </a>
         <div className="mt-6 font-semibold text-white">Procedure not found.</div>
-        {err ? (
-          <div className="mt-2 text-sm text-red-200">Error: {err}</div>
-        ) : null}
+        {err ? <div className="mt-2 text-sm text-red-200">Error: {err}</div> : null}
       </div>
     );
   }
@@ -439,8 +438,7 @@ export default function ProcedureClient() {
               />
             </SectionBox>
 
-            {/* SETUP PHOTOS */}
-            <SectionBox title="Setup Photos" onExpand={undefined}>
+            <SectionBox title="Setup Photos">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <label className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/15 text-white text-sm font-semibold cursor-pointer">
                   {uploadingPhotos ? "Uploading..." : "+ Add photos"}
@@ -460,9 +458,7 @@ export default function ProcedureClient() {
               </div>
 
               {photos.length === 0 ? (
-                <div className="mt-4 text-sm text-white/70">
-                  No setup photos yet.
-                </div>
+                <div className="mt-4 text-sm text-white/70">No setup photos yet.</div>
               ) : (
                 <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {photos.map((p) => (
@@ -494,7 +490,6 @@ export default function ProcedureClient() {
         </div>
       </div>
 
-      {/* EXPAND MODAL */}
       {openSection ? (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-3xl bg-[#06121b]/90 border border-white/10 rounded-3xl shadow-2xl overflow-hidden">
