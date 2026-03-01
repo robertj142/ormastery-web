@@ -4,145 +4,67 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 
-type ProcedureRow = {
+type Procedure = {
   id: string;
-  user_id: string;
-  surgeon_id: string;
   name: string;
   draping: string | null;
   instruments_trays: string | null;
   workflow_notes: string | null;
 };
 
-export default function ProcedureClient() {
-  const router = useRouter();
-  const sp = useSearchParams();
+type SectionKey = "draping" | "instruments" | "workflow";
 
+export default function ProcedureClient() {
+  const sp = useSearchParams();
   const procedureId = sp.get("procedureId");
   const surgeonId = sp.get("surgeonId");
-  const backHref = surgeonId ? `/s?id=${surgeonId}` : "/";
+  const router = useRouter();
 
   const [loading, setLoading] = useState(true);
+  const [proc, setProc] = useState<Procedure | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [proc, setProc] = useState<ProcedureRow | null>(null);
 
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-
-  const [name, setName] = useState("");
   const [draping, setDraping] = useState("");
-  const [instrumentsTrays, setInstrumentsTrays] = useState("");
-  const [workflowNotes, setWorkflowNotes] = useState("");
+  const [instruments, setInstruments] = useState("");
+  const [workflow, setWorkflow] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  // Scrub modal
-  const [openSection, setOpenSection] = useState<
-    null | "draping" | "instruments" | "workflow"
-  >(null);
+  // Modal viewer
+  const [openSection, setOpenSection] = useState<SectionKey | null>(null);
 
-  const [autoScrollOn, setAutoScrollOn] = useState(true);
-  const [autoScrollSpeed, setAutoScrollSpeed] = useState(18); // px/sec
-
+  // Autoscroll
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const intervalRef = useRef<number | null>(null);
+  const [autoScrollOn, setAutoScrollOn] = useState(true);
+
+  // px/sec (iPhone-safe defaults)
+  const [autoScrollSpeed, setAutoScrollSpeed] = useState<number>(22);
+
+  const rafRef = useRef<number | null>(null);
+  const lastTsRef = useRef<number>(0);
+  const carryRef = useRef<number>(0);
 
   const sectionTitle = useMemo(() => {
+    if (!openSection) return "";
     if (openSection === "draping") return "Draping";
     if (openSection === "instruments") return "Instruments / Trays";
-    if (openSection === "workflow") return "Workflow / Notes";
-    return "";
+    return "Workflow / Notes";
   }, [openSection]);
 
   const sectionBody = useMemo(() => {
-    if (!proc) return "";
-    if (openSection === "draping") return proc.draping ?? "";
-    if (openSection === "instruments") return proc.instruments_trays ?? "";
-    if (openSection === "workflow") return proc.workflow_notes ?? "";
-    return "";
-  }, [openSection, proc]);
+    if (!openSection) return "";
+    if (openSection === "draping") return draping || "";
+    if (openSection === "instruments") return instruments || "";
+    return workflow || "";
+  }, [openSection, draping, instruments, workflow]);
 
   useEffect(() => {
     if (!procedureId) {
       setLoading(false);
       return;
     }
-    loadProcedure(procedureId);
+    load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [procedureId]);
-
-  useEffect(() => {
-    // reset scroll position when opening
-    if (openSection && scrollRef.current) {
-      scrollRef.current.scrollTop = 0;
-    }
-  }, [openSection]);
-
-  function stopAutoScroll() {
-    if (intervalRef.current) {
-      window.clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-  }
-
-  function startAutoScroll() {
-    stopAutoScroll();
-
-    const el = scrollRef.current;
-    if (!el) return;
-
-    // Only scroll if there is overflow
-    const maxScroll = el.scrollHeight - el.clientHeight;
-    if (maxScroll <= 0) return;
-
-    const tickMs = 50; // smooth enough
-    const step = (autoScrollSpeed * tickMs) / 1000;
-
-    intervalRef.current = window.setInterval(() => {
-      const node = scrollRef.current;
-      if (!node) return;
-
-      const max = node.scrollHeight - node.clientHeight;
-      if (max <= 0) return;
-
-      const next = node.scrollTop + step;
-
-      if (next >= max - 1) {
-        // pause briefly at bottom, then restart at top
-        node.scrollTop = max;
-        stopAutoScroll();
-        window.setTimeout(() => {
-          if (scrollRef.current) scrollRef.current.scrollTop = 0;
-          if (autoScrollOn) startAutoScroll();
-        }, 700);
-        return;
-      }
-
-      node.scrollTop = next;
-    }, tickMs);
-  }
-
-  useEffect(() => {
-    // Start/stop whenever the modal settings change
-    if (!openSection) {
-      stopAutoScroll();
-      return;
-    }
-
-    if (!autoScrollOn) {
-      stopAutoScroll();
-      return;
-    }
-
-    // Wait a beat so the DOM paints and scrollHeight is correct
-    const t = window.setTimeout(() => {
-      startAutoScroll();
-    }, 50);
-
-    return () => {
-      window.clearTimeout(t);
-      stopAutoScroll();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openSection, autoScrollOn, autoScrollSpeed, sectionBody]);
 
   async function requireSession() {
     const { data, error } = await supabase.auth.getSession();
@@ -154,7 +76,7 @@ export default function ProcedureClient() {
     return data.session;
   }
 
-  async function loadProcedure(id: string) {
+  async function load() {
     setLoading(true);
     setErr(null);
 
@@ -164,19 +86,17 @@ export default function ProcedureClient() {
 
       const { data, error } = await supabase
         .from("procedures")
-        .select("id, user_id, surgeon_id, name, draping, instruments_trays, workflow_notes")
-        .eq("id", id)
+        .select("id, name, draping, instruments_trays, workflow_notes")
+        .eq("id", procedureId!)
         .eq("user_id", userId)
         .maybeSingle();
 
       if (error) throw new Error(error.message);
 
-      setProc((data as ProcedureRow) ?? null);
-
-      setName(data?.name ?? "");
+      setProc(data ?? null);
       setDraping(data?.draping ?? "");
-      setInstrumentsTrays(data?.instruments_trays ?? "");
-      setWorkflowNotes(data?.workflow_notes ?? "");
+      setInstruments(data?.instruments_trays ?? "");
+      setWorkflow(data?.workflow_notes ?? "");
     } catch (e: any) {
       setErr(e?.message ?? "Unknown error");
       setProc(null);
@@ -185,89 +105,138 @@ export default function ProcedureClient() {
     }
   }
 
-  async function saveProcedure() {
-    if (!procedureId) return;
+  async function save() {
+    if (!proc) return;
 
     try {
       setSaving(true);
-      const session = await requireSession();
+      await requireSession();
 
       const { error } = await supabase
         .from("procedures")
         .update({
-          name: name.trim(),
           draping,
-          instruments_trays: instrumentsTrays,
-          workflow_notes: workflowNotes,
+          instruments_trays: instruments,
+          workflow_notes: workflow,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", procedureId)
-        .eq("user_id", session.user.id);
+        .eq("id", proc.id);
 
       if (error) throw new Error(error.message);
-
-      await loadProcedure(procedureId);
     } catch (e: any) {
-      alert(e?.message ?? "Failed to save");
+      alert(e?.message ?? "Save failed");
     } finally {
       setSaving(false);
     }
   }
 
-  async function deleteProcedure() {
-    if (!procedureId) return;
-
-    const ok = window.confirm(
-      `Are you sure you want to delete this procedure?\n\nThis cannot be undone.`
-    );
-    if (!ok) return;
-
-    try {
-      setDeleting(true);
-      const session = await requireSession();
-
-      const { error } = await supabase
-        .from("procedures")
-        .delete()
-        .eq("id", procedureId)
-        .eq("user_id", session.user.id);
-
-      if (error) throw new Error(error.message);
-
-      router.push(backHref);
-    } catch (e: any) {
-      alert(e?.message ?? "Failed to delete");
-    } finally {
-      setDeleting(false);
+  function stopAutoScroll() {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
     }
+    lastTsRef.current = 0;
+    carryRef.current = 0;
   }
 
-  function openScrub(section: "draping" | "instruments" | "workflow") {
-    setOpenSection(section);
-    setAutoScrollOn(true);
-  }
-
-  function closeScrub() {
-    setOpenSection(null);
+  function startAutoScroll() {
     stopAutoScroll();
+
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const maxScroll = el.scrollHeight - el.clientHeight;
+    if (maxScroll <= 0) return;
+
+    const loop = (ts: number) => {
+      const node = scrollRef.current;
+      if (!node) return;
+
+      const max = node.scrollHeight - node.clientHeight;
+      if (max <= 0) return;
+
+      if (!lastTsRef.current) lastTsRef.current = ts;
+      const dt = ts - lastTsRef.current;
+      lastTsRef.current = ts;
+
+      // Accumulate fractional pixels so iPhone "slow" actually moves
+      carryRef.current += (autoScrollSpeed * dt) / 1000;
+
+      const step = Math.floor(carryRef.current);
+      if (step >= 1) {
+        carryRef.current -= step;
+
+        const next = node.scrollTop + step;
+
+        // Loop behavior: pause at bottom, jump to top, continue
+        if (next >= max - 1) {
+          node.scrollTop = max;
+          stopAutoScroll();
+
+          window.setTimeout(() => {
+            const n = scrollRef.current;
+            if (!n) return;
+            n.scrollTop = 0;
+            if (autoScrollOn) startAutoScroll();
+          }, 700);
+
+          return;
+        }
+
+        node.scrollTop = next;
+      }
+
+      rafRef.current = requestAnimationFrame(loop);
+    };
+
+    rafRef.current = requestAnimationFrame(loop);
   }
+
+  useEffect(() => {
+    if (!openSection) {
+      stopAutoScroll();
+      return;
+    }
+    if (!autoScrollOn) {
+      stopAutoScroll();
+      return;
+    }
+
+    // Start immediately (no lag). Double rAF ensures layout is ready.
+    const t = window.setTimeout(() => {
+      if (scrollRef.current) scrollRef.current.scrollTop = 0;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          startAutoScroll();
+        });
+      });
+    }, 0);
+
+    return () => {
+      window.clearTimeout(t);
+      stopAutoScroll();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openSection, autoScrollOn, autoScrollSpeed, sectionBody]);
 
   if (!procedureId) {
     return (
-      <div className="min-h-[calc(100vh-72px)] bg-transparent flex items-center justify-center px-6 py-10">
-        <div className="w-full max-w-md rounded-2xl bg-white/10 border border-white/20 shadow-xl backdrop-blur-md p-6">
-          <button onClick={() => router.back()} className="text-white underline text-sm" type="button">
-            Back
-          </button>
-          <div className="mt-6 text-white font-semibold">Missing procedureId.</div>
-        </div>
+      <div className="min-h-screen p-6">
+        <button
+          onClick={() => router.back()}
+          className="text-brand-accent underline"
+          type="button"
+        >
+          Back
+        </button>
+        <div className="mt-6 font-semibold text-white">Missing procedureId.</div>
       </div>
     );
   }
 
   if (loading) {
     return (
-      <div className="min-h-[calc(100vh-72px)] bg-transparent flex items-center justify-center text-sm text-white">
+      <div className="min-h-screen flex items-center justify-center text-sm text-white/80">
         Loading…
       </div>
     );
@@ -275,137 +244,156 @@ export default function ProcedureClient() {
 
   if (!proc) {
     return (
-      <div className="min-h-[calc(100vh-72px)] bg-transparent flex items-center justify-center px-6 py-10">
-        <div className="w-full max-w-md rounded-2xl bg-white/10 border border-white/20 shadow-xl backdrop-blur-md p-6">
-          <a href={backHref} className="text-white underline text-sm">
-            Back
-          </a>
-          <div className="mt-6 text-white font-semibold">Procedure not found.</div>
-          {err ? <div className="mt-2 text-sm text-red-200">Error: {err}</div> : null}
-        </div>
+      <div className="min-h-screen p-6">
+        <a
+          href={surgeonId ? `/s?id=${surgeonId}` : "/"}
+          className="text-brand-accent underline"
+        >
+          Back
+        </a>
+        <div className="mt-6 font-semibold text-white">Procedure not found.</div>
+        {err ? (
+          <div className="mt-2 text-sm text-red-200">Error: {err}</div>
+        ) : null}
       </div>
     );
   }
 
   return (
-    <div className="min-h-[calc(100vh-72px)] bg-transparent flex items-start justify-center px-6 py-10">
-      <div className="w-full max-w-3xl rounded-2xl bg-white/10 border border-white/20 shadow-xl backdrop-blur-md p-6">
-        <div className="flex items-center justify-between">
-          <a href={backHref} className="text-white underline text-sm">
-            Back
-          </a>
+    <div className="min-h-screen p-6">
+      {/* Top controls */}
+      <div className="flex items-center justify-between mb-6">
+        <a
+          href={surgeonId ? `/s?id=${surgeonId}` : "/"}
+          className="text-brand-accent underline"
+        >
+          Back
+        </a>
 
-          <button
-            onClick={deleteProcedure}
-            disabled={deleting}
-            className="text-red-200 underline text-sm disabled:opacity-60"
-            type="button"
-          >
-            {deleting ? "Deleting..." : "Delete procedure"}
-          </button>
-        </div>
+        <button
+          onClick={save}
+          disabled={saving}
+          className="bg-brand-accent text-white px-4 py-2 rounded-xl font-semibold disabled:opacity-60"
+          type="button"
+        >
+          {saving ? "Saving…" : "Save"}
+        </button>
+      </div>
 
-        <div className="mt-4">
-          <div className="text-white text-xs font-semibold tracking-wide opacity-80">
-            PROCEDURE
-          </div>
+      {/* Glass card wrapper like your login vibe */}
+      <div className="mx-auto w-full max-w-3xl">
+        <div className="bg-white/10 backdrop-blur rounded-3xl border border-white/15 shadow-2xl p-6">
+          <div className="text-2xl font-black text-white mb-6">{proc.name}</div>
 
-          <div className="mt-1 flex flex-col sm:flex-row sm:items-center gap-3">
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-lg px-3 py-2 bg-white/90 text-gray-900 placeholder:text-gray-500 outline-none ring-1 ring-white/20 focus:ring-2 focus:ring-[#00a9be]"
-              placeholder="Procedure name"
-            />
-
-            <button
-              onClick={saveProcedure}
-              disabled={saving}
-              className="sm:w-40 w-full rounded-lg py-2.5 font-semibold text-white bg-[#00243d] hover:opacity-95 disabled:opacity-60"
-              type="button"
+          <div className="space-y-6">
+            <SectionBox
+              title="Draping"
+              onExpand={() => setOpenSection("draping")}
             >
-              {saving ? "Saving..." : "Save"}
-            </button>
-          </div>
+              <textarea
+                className="w-full rounded-2xl p-4 min-h-[120px] bg-white/10 border border-white/20 text-white placeholder:text-white/40 outline-none focus:border-white/40"
+                value={draping}
+                onChange={(e) => setDraping(e.target.value)}
+                placeholder="Draping notes..."
+              />
+            </SectionBox>
 
-          <div className="mt-2 text-sm text-white/75">
-            Tap ⤢ to open a “scrub view” window for quick reading in the room.
-          </div>
-        </div>
+            <SectionBox
+              title="Instruments / Trays"
+              onExpand={() => setOpenSection("instruments")}
+            >
+              <textarea
+                className="w-full rounded-2xl p-4 min-h-[160px] bg-white/10 border border-white/20 text-white placeholder:text-white/40 outline-none focus:border-white/40"
+                value={instruments}
+                onChange={(e) => setInstruments(e.target.value)}
+                placeholder="Instrument and tray notes..."
+              />
+            </SectionBox>
 
-        <div className="mt-6 space-y-4">
-          <SectionCard title="Draping" value={draping} onChange={setDraping} onExpand={() => openScrub("draping")} />
-          <SectionCard title="Instruments / Trays" value={instrumentsTrays} onChange={setInstrumentsTrays} onExpand={() => openScrub("instruments")} />
-          <SectionCard title="Workflow / Notes" value={workflowNotes} onChange={setWorkflowNotes} onExpand={() => openScrub("workflow")} />
+            <SectionBox
+              title="Workflow / Notes"
+              onExpand={() => setOpenSection("workflow")}
+            >
+              <textarea
+                className="w-full rounded-2xl p-4 min-h-[160px] bg-white/10 border border-white/20 text-white placeholder:text-white/40 outline-none focus:border-white/40"
+                value={workflow}
+                onChange={(e) => setWorkflow(e.target.value)}
+                placeholder="Workflow notes..."
+              />
+            </SectionBox>
+
+            <SectionBox title="Setup Photos" onExpand={undefined}>
+              <div className="text-sm text-white/75">
+                Setup photo upload comes next. We’ll add a Supabase storage bucket
+                for procedure photos and tie it to this procedure.
+              </div>
+            </SectionBox>
+          </div>
         </div>
       </div>
 
+      {/* EXPAND MODAL (scrubbed-in view) */}
       {openSection ? (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4" role="dialog" aria-modal="true">
-          <div className="w-full max-w-2xl rounded-2xl bg-white/10 border border-white/20 shadow-2xl backdrop-blur-md overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/15">
-              <div>
-                <div className="text-xs text-white/70 tracking-wide font-semibold">
-                  SCRUB VIEW
-                </div>
-                <div className="text-white text-lg font-semibold">{sectionTitle}</div>
-              </div>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-3xl bg-[#06121b]/90 border border-white/10 rounded-3xl shadow-2xl overflow-hidden">
+            <div className="px-5 py-4 flex items-center justify-between border-b border-white/10">
+              <div className="text-white font-black text-lg">{sectionTitle}</div>
 
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => {
-                    if (scrollRef.current) scrollRef.current.scrollTop = 0;
-                    if (autoScrollOn) startAutoScroll();
-                  }}
-                  className="rounded-lg px-3 py-2 text-sm font-semibold text-white bg-white/10 border border-white/20 hover:bg-white/20"
-                  type="button"
-                >
-                  Restart
-                </button>
+              <button
+                onClick={() => setOpenSection(null)}
+                className="text-white/80 hover:text-white text-sm underline"
+                type="button"
+              >
+                Close
+              </button>
+            </div>
 
-                <button
-                  onClick={() => setAutoScrollOn((v) => !v)}
-                  className="rounded-lg px-3 py-2 text-sm font-semibold text-white bg-white/10 border border-white/20 hover:bg-white/20"
-                  type="button"
-                >
-                  {autoScrollOn ? "Pause" : "Auto-scroll"}
-                </button>
+            {/* Controls row */}
+            <div className="px-5 py-3 flex flex-wrap items-center gap-3 border-b border-white/10">
+              <button
+                onClick={() => setAutoScrollOn((v) => !v)}
+                className="px-3 py-2 rounded-xl bg-white/10 border border-white/15 text-white text-sm font-semibold"
+                type="button"
+              >
+                {autoScrollOn ? "Auto-scroll: ON" : "Auto-scroll: OFF"}
+              </button>
 
+              <div className="flex items-center gap-2">
+                <div className="text-white/70 text-sm">Speed</div>
                 <select
                   value={autoScrollSpeed}
                   onChange={(e) => setAutoScrollSpeed(Number(e.target.value))}
-                  className="rounded-lg px-3 py-2 text-sm font-semibold text-white bg-white/10 border border-white/20 outline-none"
+                  className="bg-white/10 border border-white/15 text-white text-sm rounded-xl px-3 py-2 outline-none"
                 >
-                  <option value={10}>Slow</option>
-                  <option value={18}>Normal</option>
-                  <option value={28}>Fast</option>
+                  <option value={14}>Slow</option>
+                  <option value={22}>Normal</option>
+                  <option value={32}>Fast</option>
                 </select>
-
-                <button
-                  onClick={closeScrub}
-                  className="rounded-lg px-3 py-2 text-sm font-semibold text-white bg-[#00243d] hover:opacity-95"
-                  type="button"
-                >
-                  Close
-                </button>
               </div>
+
+              <button
+                onClick={() => {
+                  if (!scrollRef.current) return;
+                  scrollRef.current.scrollTop = 0;
+                }}
+                className="px-3 py-2 rounded-xl bg-white/10 border border-white/15 text-white text-sm font-semibold"
+                type="button"
+              >
+                Restart
+              </button>
             </div>
 
-            <div className="p-5">
-              <div className="rounded-xl bg-white/10 border border-white/15 p-4">
-                <div
-                  ref={scrollRef}
-                  className="max-h-[60vh] overflow-y-auto pr-2 text-white/95 text-base leading-7 whitespace-pre-wrap"
-                >
-                  {sectionBody?.trim()
-                    ? sectionBody
-                    : "No content yet. Add notes in the main page."}
-                </div>
+            {/* Scroll area */}
+            <div
+              ref={scrollRef}
+              className="max-h-[70vh] overflow-y-auto px-6 py-6"
+              style={{ WebkitOverflowScrolling: "touch" }}
+            >
+              <div className="whitespace-pre-wrap text-white text-[22px] leading-relaxed">
+                {sectionBody?.trim() ? sectionBody : "—"}
               </div>
 
-              <div className="mt-3 text-xs text-white/60">
-                If it doesn’t scroll, that means the text fits on screen (no overflow).
-              </div>
+              <div className="h-10" />
             </div>
           </div>
         </div>
@@ -414,33 +402,32 @@ export default function ProcedureClient() {
   );
 }
 
-function SectionCard(props: {
+function SectionBox({
+  title,
+  children,
+  onExpand,
+}: {
   title: string;
-  value: string;
-  onChange: (v: string) => void;
-  onExpand: () => void;
+  children: React.ReactNode;
+  onExpand?: (() => void) | undefined;
 }) {
   return (
-    <div className="rounded-2xl bg-white/10 border border-white/20 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="text-white text-sm font-semibold">{props.title}</div>
-        <button
-          onClick={props.onExpand}
-          className="shrink-0 rounded-lg px-3 py-2 text-sm font-semibold text-white bg-white/10 border border-white/20 hover:bg-white/20"
-          type="button"
-          aria-label={`Expand ${props.title}`}
-          title="Scrub view"
-        >
-          ⤢
-        </button>
-      </div>
+    <div className="rounded-3xl border border-white/15 bg-white/5 p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="font-black text-white">{title}</div>
 
-      <textarea
-        value={props.value}
-        onChange={(e) => props.onChange(e.target.value)}
-        className="mt-3 w-full min-h-[140px] rounded-lg px-3 py-2 bg-white/90 text-gray-900 placeholder:text-gray-500 outline-none ring-1 ring-white/20 focus:ring-2 focus:ring-[#00a9be]"
-        placeholder="Add notes…"
-      />
+        {onExpand ? (
+          <button
+            onClick={onExpand}
+            className="text-white/85 hover:text-white text-sm underline"
+            type="button"
+            aria-label={`Expand ${title}`}
+          >
+            Expand
+          </button>
+        ) : null}
+      </div>
+      {children}
     </div>
   );
 }

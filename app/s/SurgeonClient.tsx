@@ -399,11 +399,6 @@ export default function SurgeonClient() {
                 </div>
               </div>
             </div>
-
-            <div className="mt-4 rounded-xl bg-white/5 border border-white/10 p-4 text-white/80 text-sm">
-              Quick tip: Keep glove and gown sizes updated so anyone jumping into
-              the room can set up fast.
-            </div>
           </div>
         </div>
 
