@@ -20,6 +20,7 @@ export default function ProcedureClient() {
 
   const procedureId = sp.get("procedureId");
   const surgeonId = sp.get("surgeonId");
+  const backHref = surgeonId ? `/s?id=${surgeonId}` : "/";
 
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -33,28 +34,16 @@ export default function ProcedureClient() {
   const [instrumentsTrays, setInstrumentsTrays] = useState("");
   const [workflowNotes, setWorkflowNotes] = useState("");
 
-  // “Scrub view” modal
+  // Scrub modal
   const [openSection, setOpenSection] = useState<
     null | "draping" | "instruments" | "workflow"
   >(null);
 
-  // autoscroll controls inside modal
   const [autoScrollOn, setAutoScrollOn] = useState(true);
   const [autoScrollSpeed, setAutoScrollSpeed] = useState(18); // px/sec
+
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const rafRef = useRef<number | null>(null);
-  const lastTsRef = useRef<number | null>(null);
-
-  const backHref = surgeonId ? `/s?id=${surgeonId}` : "/";
-
-  useEffect(() => {
-    if (!procedureId) {
-      setLoading(false);
-      return;
-    }
-    loadProcedure(procedureId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [procedureId]);
+  const intervalRef = useRef<number | null>(null);
 
   const sectionTitle = useMemo(() => {
     if (openSection === "draping") return "Draping";
@@ -72,58 +61,88 @@ export default function ProcedureClient() {
   }, [openSection, proc]);
 
   useEffect(() => {
+    if (!procedureId) {
+      setLoading(false);
+      return;
+    }
+    loadProcedure(procedureId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [procedureId]);
+
+  useEffect(() => {
+    // reset scroll position when opening
     if (openSection && scrollRef.current) {
       scrollRef.current.scrollTop = 0;
     }
   }, [openSection]);
 
+  function stopAutoScroll() {
+    if (intervalRef.current) {
+      window.clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }
+
+  function startAutoScroll() {
+    stopAutoScroll();
+
+    const el = scrollRef.current;
+    if (!el) return;
+
+    // Only scroll if there is overflow
+    const maxScroll = el.scrollHeight - el.clientHeight;
+    if (maxScroll <= 0) return;
+
+    const tickMs = 50; // smooth enough
+    const step = (autoScrollSpeed * tickMs) / 1000;
+
+    intervalRef.current = window.setInterval(() => {
+      const node = scrollRef.current;
+      if (!node) return;
+
+      const max = node.scrollHeight - node.clientHeight;
+      if (max <= 0) return;
+
+      const next = node.scrollTop + step;
+
+      if (next >= max - 1) {
+        // pause briefly at bottom, then restart at top
+        node.scrollTop = max;
+        stopAutoScroll();
+        window.setTimeout(() => {
+          if (scrollRef.current) scrollRef.current.scrollTop = 0;
+          if (autoScrollOn) startAutoScroll();
+        }, 700);
+        return;
+      }
+
+      node.scrollTop = next;
+    }, tickMs);
+  }
+
   useEffect(() => {
-    if (!openSection) return;
+    // Start/stop whenever the modal settings change
+    if (!openSection) {
+      stopAutoScroll();
+      return;
+    }
 
     if (!autoScrollOn) {
       stopAutoScroll();
       return;
     }
 
-    startAutoScroll();
-    return () => stopAutoScroll();
+    // Wait a beat so the DOM paints and scrollHeight is correct
+    const t = window.setTimeout(() => {
+      startAutoScroll();
+    }, 50);
+
+    return () => {
+      window.clearTimeout(t);
+      stopAutoScroll();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openSection, autoScrollOn, autoScrollSpeed, sectionBody]);
-
-  function stopAutoScroll() {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = null;
-    lastTsRef.current = null;
-  }
-
-  function startAutoScroll() {
-    stopAutoScroll();
-
-    const tick = (ts: number) => {
-      const el = scrollRef.current;
-      if (!el) return;
-
-      const last = lastTsRef.current ?? ts;
-      const dt = ts - last;
-      lastTsRef.current = ts;
-
-      const maxScroll = el.scrollHeight - el.clientHeight;
-      if (maxScroll > 0) {
-        const delta = (autoScrollSpeed * dt) / 1000;
-        el.scrollTop = Math.min(maxScroll, el.scrollTop + delta);
-
-        if (el.scrollTop >= maxScroll - 1) {
-          setTimeout(() => {
-            if (scrollRef.current) scrollRef.current.scrollTop = 0;
-          }, 700);
-        }
-      }
-
-      rafRef.current = requestAnimationFrame(tick);
-    };
-
-    rafRef.current = requestAnimationFrame(tick);
-  }
 
   async function requireSession() {
     const { data, error } = await supabase.auth.getSession();
@@ -226,7 +245,6 @@ export default function ProcedureClient() {
   function openScrub(section: "draping" | "instruments" | "workflow") {
     setOpenSection(section);
     setAutoScrollOn(true);
-    setAutoScrollSpeed(18);
   }
 
   function closeScrub() {
@@ -316,33 +334,9 @@ export default function ProcedureClient() {
         </div>
 
         <div className="mt-6 space-y-4">
-          <SectionCard
-            title="Draping"
-            value={draping}
-            onChange={setDraping}
-            onExpand={() => openScrub("draping")}
-            placeholder="e.g., Split sheets, Ioban, stockinette, extra towels…"
-          />
-
-          <SectionCard
-            title="Instruments / Trays"
-            value={instrumentsTrays}
-            onChange={setInstrumentsTrays}
-            onExpand={() => openScrub("instruments")}
-            placeholder="e.g., Ortho set A, power, pulsed lavage, implants, peel packs…"
-          />
-
-          <SectionCard
-            title="Workflow / Notes"
-            value={workflowNotes}
-            onChange={setWorkflowNotes}
-            onExpand={() => openScrub("workflow")}
-            placeholder="e.g., Sequence, positioning, surgeon quirks, “don’t forget” notes…"
-          />
-        </div>
-
-        <div className="mt-8 text-center text-xs text-white/60">
-          ORMastery • Keep it clear • Keep it repeatable
+          <SectionCard title="Draping" value={draping} onChange={setDraping} onExpand={() => openScrub("draping")} />
+          <SectionCard title="Instruments / Trays" value={instrumentsTrays} onChange={setInstrumentsTrays} onExpand={() => openScrub("instruments")} />
+          <SectionCard title="Workflow / Notes" value={workflowNotes} onChange={setWorkflowNotes} onExpand={() => openScrub("workflow")} />
         </div>
       </div>
 
@@ -358,6 +352,17 @@ export default function ProcedureClient() {
               </div>
 
               <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+                    if (autoScrollOn) startAutoScroll();
+                  }}
+                  className="rounded-lg px-3 py-2 text-sm font-semibold text-white bg-white/10 border border-white/20 hover:bg-white/20"
+                  type="button"
+                >
+                  Restart
+                </button>
+
                 <button
                   onClick={() => setAutoScrollOn((v) => !v)}
                   className="rounded-lg px-3 py-2 text-sm font-semibold text-white bg-white/10 border border-white/20 hover:bg-white/20"
@@ -391,8 +396,6 @@ export default function ProcedureClient() {
                 <div
                   ref={scrollRef}
                   className="max-h-[60vh] overflow-y-auto pr-2 text-white/95 text-base leading-7 whitespace-pre-wrap"
-                  onMouseEnter={() => setAutoScrollOn(false)}
-                  onMouseLeave={() => setAutoScrollOn(true)}
                 >
                   {sectionBody?.trim()
                     ? sectionBody
@@ -401,7 +404,7 @@ export default function ProcedureClient() {
               </div>
 
               <div className="mt-3 text-xs text-white/60">
-                Hover pauses auto-scroll. Un-hover resumes.
+                If it doesn’t scroll, that means the text fits on screen (no overflow).
               </div>
             </div>
           </div>
@@ -416,18 +419,11 @@ function SectionCard(props: {
   value: string;
   onChange: (v: string) => void;
   onExpand: () => void;
-  placeholder: string;
 }) {
   return (
     <div className="rounded-2xl bg-white/10 border border-white/20 p-4">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-white text-sm font-semibold">{props.title}</div>
-          <div className="text-white/70 text-xs mt-1">
-            Keep it tight and readable.
-          </div>
-        </div>
-
+        <div className="text-white text-sm font-semibold">{props.title}</div>
         <button
           onClick={props.onExpand}
           className="shrink-0 rounded-lg px-3 py-2 text-sm font-semibold text-white bg-white/10 border border-white/20 hover:bg-white/20"
@@ -443,7 +439,7 @@ function SectionCard(props: {
         value={props.value}
         onChange={(e) => props.onChange(e.target.value)}
         className="mt-3 w-full min-h-[140px] rounded-lg px-3 py-2 bg-white/90 text-gray-900 placeholder:text-gray-500 outline-none ring-1 ring-white/20 focus:ring-2 focus:ring-[#00a9be]"
-        placeholder={props.placeholder}
+        placeholder="Add notes…"
       />
     </div>
   );

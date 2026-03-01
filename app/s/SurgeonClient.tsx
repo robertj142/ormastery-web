@@ -320,8 +320,8 @@ export default function SurgeonClient() {
             SURGEON PROFILE
           </div>
 
-          <div className="mt-1 text-3xl font-black tracking-tight text-white">
-            DR.{" "}
+          <div className="mt-1 text-2xl font-black tracking-tight text-white">
+            Dr.{" "}
             <span className="text-[#00243d]">
               {surgeon.first_name} {surgeon.last_name}
             </span>
