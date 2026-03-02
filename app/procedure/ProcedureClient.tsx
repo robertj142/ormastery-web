@@ -43,6 +43,9 @@ export default function ProcedureClient() {
 
   const [openSection, setOpenSection] = useState<SectionKey | null>(null);
 
+  // Photo viewer
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+
   // Autoscroll (iPhone-safe)
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [autoScrollOn, setAutoScrollOn] = useState(true);
@@ -65,6 +68,12 @@ export default function ProcedureClient() {
     if (openSection === "instruments") return instruments || "";
     return workflow || "";
   }, [openSection, draping, instruments, workflow]);
+
+  const activePhoto = useMemo(() => {
+    if (viewerIndex === null) return null;
+    if (viewerIndex < 0 || viewerIndex >= photos.length) return null;
+    return photos[viewerIndex];
+  }, [viewerIndex, photos]);
 
   useEffect(() => {
     if (!procedureId) {
@@ -241,6 +250,18 @@ export default function ProcedureClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openSection, autoScrollOn, autoScrollSpeed, sectionBody]);
 
+  // Close photo viewer with ESC
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (viewerIndex === null) return;
+      if (e.key === "Escape") setViewerIndex(null);
+      if (e.key === "ArrowRight") setViewerIndex((i) => (i === null ? null : Math.min(i + 1, photos.length - 1)));
+      if (e.key === "ArrowLeft") setViewerIndex((i) => (i === null ? null : Math.max(i - 1, 0)));
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [viewerIndex, photos.length]);
+
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     try {
       if (!procedureId) return;
@@ -316,7 +337,6 @@ export default function ProcedureClient() {
       const session = await requireSession();
       const userId = session.user.id;
 
-      // If storage_path looks like a URL (old rows), skip storage delete
       const looksLikeUrl =
         photo.storage_path.startsWith("http://") ||
         photo.storage_path.startsWith("https://");
@@ -338,6 +358,15 @@ export default function ProcedureClient() {
       if (rowErr) throw new Error(rowErr.message);
 
       setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+      // if viewer was open, close it if we deleted the active photo
+      setViewerIndex((idx) => {
+        if (idx === null) return null;
+        const deletedIdx = photos.findIndex((x) => x.id === photo.id);
+        if (deletedIdx === -1) return idx;
+        if (idx === deletedIdx) return null;
+        // shift index if needed
+        return idx > deletedIdx ? idx - 1 : idx;
+      });
     } catch (e: any) {
       alert(e?.message ?? "Delete failed");
     } finally {
@@ -461,17 +490,24 @@ export default function ProcedureClient() {
                 <div className="mt-4 text-sm text-white/70">No setup photos yet.</div>
               ) : (
                 <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {photos.map((p) => (
+                  {photos.map((p, idx) => (
                     <div
                       key={p.id}
                       className="relative overflow-hidden rounded-2xl border border-white/15 bg-white/5"
                     >
-                      <img
-                        src={p.url}
-                        alt="Setup photo"
-                        className="w-full h-32 object-cover"
-                        loading="lazy"
-                      />
+                      <button
+                        type="button"
+                        onClick={() => setViewerIndex(idx)}
+                        className="block w-full"
+                        aria-label="Open photo"
+                      >
+                        <img
+                          src={p.url}
+                          alt="Setup photo"
+                          className="w-full h-32 object-cover"
+                          loading="lazy"
+                        />
+                      </button>
 
                       <button
                         onClick={() => deletePhoto(p)}
@@ -490,6 +526,7 @@ export default function ProcedureClient() {
         </div>
       </div>
 
+      {/* Expand text modal */}
       {openSection ? (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-3xl bg-[#06121b]/90 border border-white/10 rounded-3xl shadow-2xl overflow-hidden">
@@ -549,6 +586,69 @@ export default function ProcedureClient() {
               </div>
               <div className="h-10" />
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Photo viewer modal */}
+      {viewerIndex !== null && activePhoto ? (
+        <div
+          className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setViewerIndex(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="w-full max-w-4xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-white/80 text-sm font-semibold">
+                Photo {viewerIndex + 1} of {photos.length}
+              </div>
+
+              <button
+                className="text-white underline text-sm"
+                type="button"
+                onClick={() => setViewerIndex(null)}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="relative rounded-3xl overflow-hidden border border-white/10 bg-black">
+              <img
+                src={activePhoto.url}
+                alt="Large setup photo"
+                className="w-full max-h-[75vh] object-contain bg-black"
+              />
+
+              <button
+                type="button"
+                onClick={() => setViewerIndex((i) => (i === null ? null : Math.max(i - 1, 0)))}
+                disabled={viewerIndex === 0}
+                className="absolute left-3 top-1/2 -translate-y-1/2 px-4 py-3 rounded-2xl bg-black/60 text-white font-semibold disabled:opacity-40"
+              >
+                Prev
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setViewerIndex((i) =>
+                    i === null ? null : Math.min(i + 1, photos.length - 1)
+                  )
+                }
+                disabled={viewerIndex === photos.length - 1}
+                className="absolute right-3 top-1/2 -translate-y-1/2 px-4 py-3 rounded-2xl bg-black/60 text-white font-semibold disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
+
+            {activePhoto.caption ? (
+              <div className="mt-3 text-white/80 text-sm">{activePhoto.caption}</div>
+            ) : null}
           </div>
         </div>
       ) : null}
