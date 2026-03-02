@@ -164,9 +164,6 @@ export default function Home() {
                     <div className="text-lg font-semibold text-white truncate">
                       Dr. {s.first_name} {s.last_name}
                     </div>
-                    <div className="text-xs text-white/60">
-                      Tap to open profile
-                    </div>
                   </div>
 
                   <div className="text-white/70 group-hover:text-white transition">
