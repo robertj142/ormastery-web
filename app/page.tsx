@@ -1,14 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
+import Link from "next/link";
 
 type Surgeon = {
   id: string;
   first_name: string;
   last_name: string;
+  photo_url: string | null;
 };
+
+function initials(fn?: string | null, ln?: string | null) {
+  const a = (fn ?? "").trim().slice(0, 1).toUpperCase();
+  const b = (ln ?? "").trim().slice(0, 1).toUpperCase();
+  return (a + b) || "DR";
+}
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
@@ -43,7 +50,7 @@ export default function Home() {
   async function fetchSurgeons() {
     const { data, error } = await supabase
       .from("surgeons")
-      .select("id, first_name, last_name")
+      .select("id, first_name, last_name, photo_url")
       .order("last_name", { ascending: true });
 
     if (error) {
@@ -51,7 +58,7 @@ export default function Home() {
       return;
     }
 
-    setSurgeons(data ?? []);
+    setSurgeons((data as Surgeon[]) ?? []);
   }
 
   async function addSurgeon() {
@@ -83,14 +90,9 @@ export default function Home() {
     fetchSurgeons();
   }
 
-  async function logout() {
-    await supabase.auth.signOut();
-    window.location.href = "/login";
-  }
-
   if (loading) {
     return (
-      <div className="min-h-[calc(100vh-72px)] flex items-center justify-center text-sm text-white bg-transparent">
+      <div className="min-h-screen flex items-center justify-center text-sm text-white/80">
         Loading…
       </div>
     );
@@ -98,16 +100,14 @@ export default function Home() {
 
   if (!isAuthed) {
     return (
-      <div className="min-h-[calc(100vh-72px)] flex items-center justify-center px-6 py-10 bg-transparent">
-        <div className="w-full max-w-md rounded-2xl bg-white/10 border border-white/20 shadow-xl backdrop-blur-md p-6">
-          <h1 className="text-white text-xl font-semibold">Welcome</h1>
-          <p className="text-white/80 text-sm mt-1">
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="bg-white/10 backdrop-blur rounded-3xl border border-white/15 shadow-2xl p-6 w-full max-w-sm">
+          <p className="text-sm text-white/80 mb-4">
             Please log in to view your surgeons.
           </p>
-
           <a
             href="/login"
-            className="mt-6 block text-center w-full rounded-lg py-2.5 font-semibold text-white bg-[#00243d] hover:opacity-95"
+            className="block text-center bg-brand-accent text-white py-3 rounded-2xl font-semibold"
           >
             Go to Login
           </a>
@@ -117,73 +117,89 @@ export default function Home() {
   }
 
   return (
-    // IMPORTANT: no background here. Layout provides the gradient.
-    <div className="min-h-[calc(100vh-72px)] bg-transparent flex items-start justify-center px-6 py-10">
-      <div className="w-full max-w-3xl rounded-2xl bg-white/10 border border-white/20 shadow-xl backdrop-blur-md p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-white text-xl font-semibold">Your Surgeons</h1>
-            <p className="text-white/80 text-sm mt-1">
-              Add, manage, and open surgeon profiles.
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-6 flex items-center justify-between">
-          <button
-            onClick={() => setShowModal(true)}
-            className="bg-[#00a9be] text-white px-5 py-3 rounded-lg font-semibold hover:opacity-95"
-            type="button"
-          >
-            + Add Surgeon
-          </button>
-
-          <div className="text-white/70 text-sm">
-            {surgeons.length} surgeon{surgeons.length === 1 ? "" : "s"}
-          </div>
-        </div>
-
-        <div className="mt-6 space-y-3">
-          {surgeons.map((s) => (
-            <Link
-              key={s.id}
-              href={`/s?id=${s.id}`}
-              className="block p-4 rounded-xl bg-white/10 border border-white/20 hover:bg-white/20 transition"
+    <div className="min-h-screen p-6">
+      <div className="mx-auto w-full max-w-3xl">
+        <div className="bg-white/10 backdrop-blur rounded-3xl border border-white/15 shadow-2xl p-6">
+          {/* Add Surgeon Button */}
+          <div className="flex items-center justify-between mb-6">
+            <button
+              onClick={() => setShowModal(true)}
+              className="bg-brand-accent text-white px-5 py-3 rounded-2xl font-semibold"
+              type="button"
             >
-              <div className="text-lg font-semibold text-white">
-                {s.first_name} {s.last_name}
-              </div>
-            </Link>
-          ))}
+              + Add Surgeon
+            </button>
+
+            <div className="text-xs text-white/60">
+              {surgeons.length} surgeon{surgeons.length === 1 ? "" : "s"}
+            </div>
+          </div>
+
+          {/* Surgeon List */}
+          <ul className="space-y-3">
+            {surgeons.map((s) => (
+              <li key={s.id}>
+                <Link
+                  href={`/s?id=${s.id}`}
+                  className="group flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition"
+                >
+                  {/* Thumbnail */}
+                  <div className="h-12 w-12 rounded-full overflow-hidden bg-white/10 border border-white/10 flex items-center justify-center text-white font-bold">
+                    {s.photo_url ? (
+                      // Using <img> keeps it simple with remote supabase URLs
+                      <img
+                        src={s.photo_url}
+                        alt={`${s.first_name} ${s.last_name}`}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <span className="text-sm">
+                        {initials(s.first_name, s.last_name)}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="text-lg font-semibold text-white truncate">
+                      Dr. {s.first_name} {s.last_name}
+                    </div>
+                    <div className="text-xs text-white/60">
+                      Tap to open profile
+                    </div>
+                  </div>
+
+                  <div className="text-white/70 group-hover:text-white transition">
+                    ›
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
 
           {surgeons.length === 0 ? (
-            <div className="text-white/80 text-sm bg-white/5 border border-white/15 rounded-xl p-4">
-              No surgeons yet. Click <b>+ Add Surgeon</b> to create your first
-              profile.
+            <div className="mt-6 text-sm text-white/70">
+              No surgeons yet. Click <b>+ Add Surgeon</b> to create one.
             </div>
           ) : null}
         </div>
       </div>
 
       {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-6">
-          <div className="w-full max-w-md rounded-2xl bg-white/10 border border-white/20 shadow-xl backdrop-blur-md p-6">
-            <div className="text-white text-lg font-semibold">Add Surgeon</div>
-            <p className="text-white/80 text-sm mt-1">
-              Enter the surgeon’s first and last name.
-            </p>
+      {showModal ? (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="w-full max-w-sm bg-white/10 backdrop-blur rounded-3xl border border-white/15 shadow-2xl p-6">
+            <div className="text-lg font-black text-white mb-4">Add Surgeon</div>
 
-            <div className="mt-5 flex flex-col gap-3">
+            <div className="flex flex-col gap-3">
               <input
-                className="w-full rounded-lg px-3 py-2 bg-white/90 text-gray-900 placeholder:text-gray-500 outline-none ring-1 ring-white/20 focus:ring-2 focus:ring-[#00a9be]"
+                className="rounded-2xl p-4 bg-white/10 border border-white/20 text-white placeholder:text-white/40 outline-none focus:border-white/40"
                 placeholder="First name"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
               />
-
               <input
-                className="w-full rounded-lg px-3 py-2 bg-white/90 text-gray-900 placeholder:text-gray-500 outline-none ring-1 ring-white/20 focus:ring-2 focus:ring-[#00a9be]"
+                className="rounded-2xl p-4 bg-white/10 border border-white/20 text-white placeholder:text-white/40 outline-none focus:border-white/40"
                 placeholder="Last name"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
@@ -192,15 +208,15 @@ export default function Home() {
               <button
                 onClick={addSurgeon}
                 disabled={adding}
-                className="w-full rounded-lg py-2.5 font-semibold text-white bg-[#00243d] hover:opacity-95 disabled:opacity-60"
+                className="bg-brand-accent text-white py-3 rounded-2xl font-semibold disabled:opacity-60"
                 type="button"
               >
-                {adding ? "Creating..." : "Create"}
+                {adding ? "Adding…" : "Create"}
               </button>
 
               <button
                 onClick={() => setShowModal(false)}
-                className="w-full rounded-lg py-2.5 font-semibold text-white/90 bg-white/10 border border-white/20 hover:bg-white/20"
+                className="text-sm text-white/70 underline"
                 type="button"
               >
                 Cancel
@@ -208,7 +224,7 @@ export default function Home() {
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
