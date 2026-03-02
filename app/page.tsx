@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import Link from "next/link";
 
@@ -120,23 +120,10 @@ export default function Home() {
     <div className="min-h-screen p-6">
       <div className="mx-auto w-full max-w-3xl">
         <div className="bg-white/10 backdrop-blur rounded-3xl border border-white/15 shadow-2xl p-6">
-          {/* Add Surgeon Button */}
-          <div className="flex items-center justify-between mb-6">
-            <button
-              onClick={() => setShowModal(true)}
-              className="bg-brand-accent text-white px-5 py-3 rounded-2xl font-semibold"
-              type="button"
-            >
-              + Add Surgeon
-            </button>
-
-            <div className="text-xs text-white/60">
-              {surgeons.length} surgeon{surgeons.length === 1 ? "" : "s"}
-            </div>
-          </div>
 
           {/* Surgeon List */}
           <ul className="space-y-3">
+
             {surgeons.map((s) => (
               <li key={s.id}>
                 <Link
@@ -146,7 +133,6 @@ export default function Home() {
                   {/* Thumbnail */}
                   <div className="h-12 w-12 rounded-full overflow-hidden bg-white/10 border border-white/10 flex items-center justify-center text-white font-bold">
                     {s.photo_url ? (
-                      // Using <img> keeps it simple with remote supabase URLs
                       <img
                         src={s.photo_url}
                         alt={`${s.first_name} ${s.last_name}`}
@@ -172,21 +158,42 @@ export default function Home() {
                 </Link>
               </li>
             ))}
+
+            {/* ADD SURGEON TILE */}
+            <li>
+              <button
+                onClick={() => setShowModal(true)}
+                className="w-full group flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-dashed border-white/20 hover:bg-white/10 transition text-left"
+                type="button"
+              >
+                <div className="h-12 w-12 rounded-full bg-brand-accent/30 border border-brand-accent/40 flex items-center justify-center text-white font-bold text-xl">
+                  +
+                </div>
+
+                <div className="flex-1">
+                  <div className="text-lg font-semibold text-white">
+                    Add Surgeon
+                  </div>
+                </div>
+
+                <div className="text-white/70 group-hover:text-white transition">
+                  ›
+                </div>
+              </button>
+            </li>
+
           </ul>
 
-          {surgeons.length === 0 ? (
-            <div className="mt-6 text-sm text-white/70">
-              No surgeons yet. Click <b>+ Add Surgeon</b> to create one.
-            </div>
-          ) : null}
         </div>
       </div>
 
       {/* Modal */}
-      {showModal ? (
+      {showModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="w-full max-w-sm bg-white/10 backdrop-blur rounded-3xl border border-white/15 shadow-2xl p-6">
-            <div className="text-lg font-black text-white mb-4">Add Surgeon</div>
+            <div className="text-lg font-black text-white mb-4">
+              Add Surgeon
+            </div>
 
             <div className="flex flex-col gap-3">
               <input
@@ -221,7 +228,7 @@ export default function Home() {
             </div>
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
