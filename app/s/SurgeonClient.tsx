@@ -316,10 +316,6 @@ export default function SurgeonClient() {
 
         {/* Name */}
         <div className="mt-4">
-          <div className="text-white text-xs font-semibold tracking-wide opacity-80">
-            SURGEON PROFILE
-          </div>
-
           <div className="mt-1 text-2xl font-black tracking-tight text-white">
             Dr.{" "}
             <span className="text-[#00243d]">
