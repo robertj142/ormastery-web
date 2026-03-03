@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
+import BackButton from "../components/BackButton";
 
 type Surgeon = {
   id: string;
@@ -41,7 +42,6 @@ export default function SurgeonClient() {
     null
   );
 
-  // Gloves/Gown modal
   const [showGGModal, setShowGGModal] = useState(false);
   const [glovesDraft, setGlovesDraft] = useState("");
   const [gownDraft, setGownDraft] = useState("");
@@ -74,7 +74,6 @@ export default function SurgeonClient() {
       const session = await requireSession();
       const userId = session.user.id;
 
-      // ✅ SELECT ONLY — do not update here
       const { data: sData, error: sErr } = await supabase
         .from("surgeons")
         .select(
@@ -261,7 +260,6 @@ export default function SurgeonClient() {
       const glovesVal = glovesDraft.trim();
       const gownVal = gownDraft.trim();
 
-      // ✅ removed updated_at so you stop getting that schema error
       const { error } = await supabase
         .from("surgeons")
         .update({
@@ -274,9 +272,7 @@ export default function SurgeonClient() {
       if (error) throw new Error(error.message);
 
       setSurgeon((prev) =>
-        prev
-          ? { ...prev, gloves: glovesVal || null, gown: gownVal || null }
-          : prev
+        prev ? { ...prev, gloves: glovesVal || null, gown: gownVal || null } : prev
       );
 
       setShowGGModal(false);
@@ -290,13 +286,7 @@ export default function SurgeonClient() {
   if (!surgeonId) {
     return (
       <div className="min-h-screen p-6">
-        <button
-          onClick={() => router.back()}
-          className="text-brand-accent underline text-sm"
-          type="button"
-        >
-          Back
-        </button>
+        <BackButton />
         <div className="mt-6 text-white font-semibold">Missing surgeon id.</div>
       </div>
     );
@@ -313,14 +303,7 @@ export default function SurgeonClient() {
   if (!surgeon) {
     return (
       <div className="min-h-screen p-6">
-        <button
-          onClick={() => router.back()}
-          className="text-brand-accent underline text-sm"
-          type="button"
-        >
-          Back
-        </button>
-
+        <BackButton />
         <div className="mt-6 text-white font-semibold">Surgeon not found.</div>
         {err ? <div className="mt-2 text-sm text-red-300">Error: {err}</div> : null}
       </div>
@@ -330,13 +313,7 @@ export default function SurgeonClient() {
   return (
     <div className="min-h-screen p-6">
       <div className="flex items-center justify-between">
-        <button
-          onClick={() => router.back()}
-          className="text-brand-accent underline text-sm"
-          type="button"
-        >
-          Back
-        </button>
+        <BackButton />
 
         <button
           onClick={deleteSurgeon}

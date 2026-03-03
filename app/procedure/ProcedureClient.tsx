@@ -377,13 +377,7 @@ export default function ProcedureClient() {
   if (!procedureId) {
     return (
       <div className="min-h-screen p-6">
-        <button
-          onClick={() => router.back()}
-          className="text-brand-accent underline"
-          type="button"
-        >
-          Back
-        </button>
+        import BackButton from "../components/BackButton";
         <div className="mt-6 font-semibold text-white">Missing procedureId.</div>
       </div>
     );
