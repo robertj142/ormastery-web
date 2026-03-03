@@ -458,7 +458,7 @@ export default function SurgeonClient() {
         </div>
 
         <div className="mt-8 text-center text-xs text-white/60">
-          ORMastery • Organized setup • Fewer surprises
+          ORMastery • Your Surgical Workflow, Organized.
         </div>
       </div>
     </div>
