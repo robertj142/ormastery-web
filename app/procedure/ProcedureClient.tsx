@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
+import BackButton from "../components/BackButton";
 
 type Procedure = {
   id: string;
@@ -250,13 +251,16 @@ export default function ProcedureClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openSection, autoScrollOn, autoScrollSpeed, sectionBody]);
 
-  // Close photo viewer with ESC
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (viewerIndex === null) return;
       if (e.key === "Escape") setViewerIndex(null);
-      if (e.key === "ArrowRight") setViewerIndex((i) => (i === null ? null : Math.min(i + 1, photos.length - 1)));
-      if (e.key === "ArrowLeft") setViewerIndex((i) => (i === null ? null : Math.max(i - 1, 0)));
+      if (e.key === "ArrowRight")
+        setViewerIndex((i) =>
+          i === null ? null : Math.min(i + 1, photos.length - 1)
+        );
+      if (e.key === "ArrowLeft")
+        setViewerIndex((i) => (i === null ? null : Math.max(i - 1, 0)));
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -358,13 +362,12 @@ export default function ProcedureClient() {
       if (rowErr) throw new Error(rowErr.message);
 
       setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
-      // if viewer was open, close it if we deleted the active photo
+
       setViewerIndex((idx) => {
         if (idx === null) return null;
         const deletedIdx = photos.findIndex((x) => x.id === photo.id);
         if (deletedIdx === -1) return idx;
         if (idx === deletedIdx) return null;
-        // shift index if needed
         return idx > deletedIdx ? idx - 1 : idx;
       });
     } catch (e: any) {
@@ -374,11 +377,14 @@ export default function ProcedureClient() {
     }
   }
 
+  function backHref() {
+    return surgeonId ? `/s?id=${surgeonId}` : "/";
+  }
+
   if (!procedureId) {
     return (
       <div className="min-h-screen p-6">
-        import BackButton from "../../components/BackButton";
-	
+        <BackButton href={backHref()} />
         <div className="mt-6 font-semibold text-white">Missing procedureId.</div>
       </div>
     );
@@ -395,8 +401,7 @@ export default function ProcedureClient() {
   if (!proc) {
     return (
       <div className="min-h-screen p-6">
-       import BackButton from "../../components/BackButton";
-       
+        <BackButton href={backHref()} />
         <div className="mt-6 font-semibold text-white">Procedure not found.</div>
         {err ? <div className="mt-2 text-sm text-red-200">Error: {err}</div> : null}
       </div>
@@ -406,8 +411,7 @@ export default function ProcedureClient() {
   return (
     <div className="min-h-screen p-6">
       <div className="flex items-center justify-between mb-6">
-       import BackButton from "../../components/BackButton";
-	
+        <BackButton href={backHref()} />
 
         <button
           onClick={save}
@@ -513,7 +517,6 @@ export default function ProcedureClient() {
         </div>
       </div>
 
-      {/* Expand text modal */}
       {openSection ? (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-3xl bg-[#06121b]/90 border border-white/10 rounded-3xl shadow-2xl overflow-hidden">
@@ -577,7 +580,6 @@ export default function ProcedureClient() {
         </div>
       ) : null}
 
-      {/* Photo viewer modal */}
       {viewerIndex !== null && activePhoto ? (
         <div
           className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
@@ -585,10 +587,7 @@ export default function ProcedureClient() {
           role="dialog"
           aria-modal="true"
         >
-          <div
-            className="w-full max-w-4xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="w-full max-w-4xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
               <div className="text-white/80 text-sm font-semibold">
                 Photo {viewerIndex + 1} of {photos.length}
@@ -612,7 +611,9 @@ export default function ProcedureClient() {
 
               <button
                 type="button"
-                onClick={() => setViewerIndex((i) => (i === null ? null : Math.max(i - 1, 0)))}
+                onClick={() =>
+                  setViewerIndex((i) => (i === null ? null : Math.max(i - 1, 0)))
+                }
                 disabled={viewerIndex === 0}
                 className="absolute left-3 top-1/2 -translate-y-1/2 px-4 py-3 rounded-2xl bg-black/60 text-white font-semibold disabled:opacity-40"
               >
