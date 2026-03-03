@@ -394,12 +394,7 @@ export default function ProcedureClient() {
   if (!proc) {
     return (
       <div className="min-h-screen p-6">
-        <a
-          href={surgeonId ? `/s?id=${surgeonId}` : "/"}
-          className="text-brand-accent underline"
-        >
-          Back
-        </a>
+        import BackButton from "../components/BackButton";
         <div className="mt-6 font-semibold text-white">Procedure not found.</div>
         {err ? <div className="mt-2 text-sm text-red-200">Error: {err}</div> : null}
       </div>
@@ -409,12 +404,7 @@ export default function ProcedureClient() {
   return (
     <div className="min-h-screen p-6">
       <div className="flex items-center justify-between mb-6">
-        <a
-          href={surgeonId ? `/s?id=${surgeonId}` : "/"}
-          className="text-brand-accent underline"
-        >
-          Back
-        </a>
+       import BackButton from "../components/BackButton";
 
         <button
           onClick={save}
