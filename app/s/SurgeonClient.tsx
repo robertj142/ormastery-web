@@ -41,7 +41,7 @@ export default function SurgeonClient() {
     null
   );
 
-  // Gloves/Gown modal state
+  // Gloves/Gown modal
   const [showGGModal, setShowGGModal] = useState(false);
   const [glovesDraft, setGlovesDraft] = useState("");
   const [gownDraft, setGownDraft] = useState("");
@@ -74,6 +74,7 @@ export default function SurgeonClient() {
       const session = await requireSession();
       const userId = session.user.id;
 
+      // ✅ SELECT ONLY — do not update here
       const { data: sData, error: sErr } = await supabase
         .from("surgeons")
         .select(
@@ -87,8 +88,6 @@ export default function SurgeonClient() {
 
       setSurgeon(sData ?? null);
       setSurgeonPhotoUrl(sData?.photo_url ?? null);
-
-      // keep modal drafts in sync with current values
       setGlovesDraft(sData?.gloves ?? "");
       setGownDraft(sData?.gown ?? "");
 
@@ -117,7 +116,6 @@ export default function SurgeonClient() {
       if (!e.target.files || e.target.files.length === 0) return;
 
       const file = e.target.files[0];
-
       if (!file.type.startsWith("image/")) {
         alert("Please choose an image file.");
         return;
@@ -263,12 +261,12 @@ export default function SurgeonClient() {
       const glovesVal = glovesDraft.trim();
       const gownVal = gownDraft.trim();
 
+      // ✅ removed updated_at so you stop getting that schema error
       const { error } = await supabase
         .from("surgeons")
         .update({
           gloves: glovesVal || null,
           gown: gownVal || null,
-          updated_at: new Date().toISOString(),
         })
         .eq("id", surgeonId)
         .eq("user_id", session.user.id);
@@ -277,11 +275,7 @@ export default function SurgeonClient() {
 
       setSurgeon((prev) =>
         prev
-          ? {
-              ...prev,
-              gloves: glovesVal || null,
-              gown: gownVal || null,
-            }
+          ? { ...prev, gloves: glovesVal || null, gown: gownVal || null }
           : prev
       );
 
@@ -303,16 +297,14 @@ export default function SurgeonClient() {
         >
           Back
         </button>
-        <div className="mt-6 text-brand-dark font-semibold">
-          Missing surgeon id.
-        </div>
+        <div className="mt-6 text-white font-semibold">Missing surgeon id.</div>
       </div>
     );
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-sm text-gray-100">
+      <div className="min-h-screen flex items-center justify-center text-sm text-white/80">
         Loading…
       </div>
     );
@@ -329,19 +321,14 @@ export default function SurgeonClient() {
           Back
         </button>
 
-        <div className="mt-6 text-brand-dark font-semibold">
-          Surgeon not found.
-        </div>
-        {err ? (
-          <div className="mt-2 text-sm text-red-300">Error: {err}</div>
-        ) : null}
+        <div className="mt-6 text-white font-semibold">Surgeon not found.</div>
+        {err ? <div className="mt-2 text-sm text-red-300">Error: {err}</div> : null}
       </div>
     );
   }
 
   return (
     <div className="min-h-screen p-6">
-      {/* Top row */}
       <div className="flex items-center justify-between">
         <button
           onClick={() => router.back()}
@@ -361,28 +348,23 @@ export default function SurgeonClient() {
         </button>
       </div>
 
-      {/* Main card (same vibe as login screen box) */}
       <div className="mt-6 bg-white/10 border border-white/15 rounded-2xl shadow-xl p-6">
-        {/* Name */}
-        <div className="text-3xl font-black tracking-tight text-brand-dark">
+        <div className="text-3xl font-black tracking-tight text-white">
           DR.{" "}
           <span className="text-brand-accent">
             {surgeon.first_name} {surgeon.last_name}
           </span>
         </div>
 
-        {/* Photo + details */}
         <div className="mt-6 flex flex-col sm:flex-row gap-8 items-start sm:items-center">
           <div className="flex flex-col items-center">
             <div className="relative h-44 w-44">
-              {/* Accent image behind */}
               <img
                 src="/photo-accent.png"
                 alt=""
                 className="absolute inset-0 h-full w-full object-contain pointer-events-none select-none"
               />
 
-              {/* Photo on top */}
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="h-40 w-40 rounded-full overflow-hidden bg-white/10 border border-white/15">
                   {surgeonPhotoUrl ? (
@@ -428,15 +410,11 @@ export default function SurgeonClient() {
             <div className="flex gap-10 text-lg text-white">
               <div>
                 <div className="text-sm text-white/70">Gloves</div>
-                <div className="font-semibold">
-                  {surgeon.gloves ? surgeon.gloves : "—"}
-                </div>
+                <div className="font-semibold">{surgeon.gloves ?? "—"}</div>
               </div>
               <div>
                 <div className="text-sm text-white/70">Gown</div>
-                <div className="font-semibold">
-                  {surgeon.gown ? surgeon.gown : "—"}
-                </div>
+                <div className="font-semibold">{surgeon.gown ?? "—"}</div>
               </div>
             </div>
 
@@ -449,7 +427,6 @@ export default function SurgeonClient() {
         </div>
       </div>
 
-      {/* Add procedure card */}
       <div className="mt-6 bg-white/10 border border-white/15 rounded-2xl shadow-xl p-6">
         <div className="text-sm font-semibold text-white/90 mb-3">
           Add a procedure
@@ -472,7 +449,6 @@ export default function SurgeonClient() {
         </button>
       </div>
 
-      {/* Procedures list */}
       <div className="mt-6 space-y-4 pb-10">
         {procedures.map((p) => (
           <div
@@ -504,7 +480,6 @@ export default function SurgeonClient() {
         ) : null}
       </div>
 
-      {/* Gloves/Gown Modal */}
       {showGGModal && (
         <div
           className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6"
@@ -514,9 +489,7 @@ export default function SurgeonClient() {
             className="w-full max-w-sm bg-white/10 border border-white/15 rounded-2xl shadow-2xl p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="text-lg font-bold text-white">
-              Gloves & Gown
-            </div>
+            <div className="text-lg font-bold text-white">Gloves & Gown</div>
             <div className="mt-1 text-sm text-white/70">
               Dr. {surgeon.first_name} {surgeon.last_name}
             </div>
