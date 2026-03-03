@@ -378,6 +378,7 @@ export default function ProcedureClient() {
     return (
       <div className="min-h-screen p-6">
         import BackButton from "../components/BackButton";
+	<BackButton />
         <div className="mt-6 font-semibold text-white">Missing procedureId.</div>
       </div>
     );
@@ -394,7 +395,8 @@ export default function ProcedureClient() {
   if (!proc) {
     return (
       <div className="min-h-screen p-6">
-        import BackButton from "../components/BackButton";
+       import BackButton from "../components/BackButton";
+       <BackButton />
         <div className="mt-6 font-semibold text-white">Procedure not found.</div>
         {err ? <div className="mt-2 text-sm text-red-200">Error: {err}</div> : null}
       </div>
@@ -405,6 +407,7 @@ export default function ProcedureClient() {
     <div className="min-h-screen p-6">
       <div className="flex items-center justify-between mb-6">
        import BackButton from "../components/BackButton";
+	<BackButton />
 
         <button
           onClick={save}
