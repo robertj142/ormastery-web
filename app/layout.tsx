@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import HeaderBar from "./HeaderBar";
+import SplashScreen from "./SplashScreen";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,12 +27,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        {/* Global angled gradient background */}
-        <div className="min-h-screen flex flex-col bg-[linear-gradient(135deg,_#00a9be_0%,_#007c93_45%,_#00243d_100%)]">
-          <HeaderBar />
+        {/* Splash overlay */}
+        <SplashScreen ms={900} />
 
-          {/* Global content padding */}
-          <main className="flex-1 px-6 py-8">{children}</main>
+        {/* App shell */}
+        <div className="min-h-screen bg-[linear-gradient(135deg,#00a9be_0%,#00243d_65%,#001a2b_100%)]">
+          <HeaderBar />
+          <main>{children}</main>
         </div>
       </body>
     </html>
