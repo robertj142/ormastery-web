@@ -47,3 +47,35 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+/* ORMastery custom scrollbars */
+
+textarea::-webkit-scrollbar,
+.scrollbar::-webkit-scrollbar {
+  width: 10px;
+}
+
+textarea::-webkit-scrollbar-track,
+.scrollbar::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.05);
+  border-radius: 10px;
+}
+
+textarea::-webkit-scrollbar-thumb,
+.scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg,#12b8c9,#0a7e8c);
+  border-radius: 10px;
+  border: 2px solid rgba(0,0,0,0.2);
+}
+
+textarea::-webkit-scrollbar-thumb:hover,
+.scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg,#18d2e6,#0ea3b5);
+}
+
+/* Firefox */
+
+textarea,
+.scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #0ea3b5 rgba(255,255,255,0.05);
+}
