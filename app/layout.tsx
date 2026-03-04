@@ -26,6 +26,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        {/* PWA / “App-like” chrome removal */}
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#06121b" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta
+          name="apple-mobile-web-app-status-bar-style"
+          content="black-translucent"
+        />
+
+        {/* Optional: nicer iOS install title */}
+        <meta name="apple-mobile-web-app-title" content="ORMastery" />
+      </head>
+
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {/* Splash overlay */}
         <SplashScreen ms={900} />
