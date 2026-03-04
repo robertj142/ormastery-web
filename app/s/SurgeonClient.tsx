@@ -327,8 +327,8 @@ export default function SurgeonClient() {
 
       <div className="mt-6 bg-white/10 border border-white/15 rounded-2xl shadow-xl p-6">
         <div className="text-3xl font-black tracking-tight text-white">
-          DR.{" "}
-          <span className="text-brand-accent">
+          Dr.{" "}
+          <span className="text-brand-dark">
             {surgeon.first_name} {surgeon.last_name}
           </span>
         </div>

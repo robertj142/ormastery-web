@@ -402,9 +402,7 @@ export default function ProcedureClient() {
       <div className="min-h-screen p-6">
         <BackButton href={backHref} />
         <div className="mt-6 font-semibold text-white">Procedure not found.</div>
-        {err ? (
-          <div className="mt-2 text-sm text-red-200">Error: {err}</div>
-        ) : null}
+        {err ? <div className="mt-2 text-sm text-red-200">Error: {err}</div> : null}
       </div>
     );
   }
@@ -644,9 +642,7 @@ export default function ProcedureClient() {
             </div>
 
             {activePhoto.caption ? (
-              <div className="mt-3 text-white/80 text-sm">
-                {activePhoto.caption}
-              </div>
+              <div className="mt-3 text-white/80 text-sm">{activePhoto.caption}</div>
             ) : null}
           </div>
         </div>
@@ -672,11 +668,27 @@ function SectionCard({
         {onExpand ? (
           <button
             onClick={onExpand}
-            className="text-white/85 hover:text-white text-sm underline"
             type="button"
             aria-label={`Expand ${title}`}
+            className="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-white/5 border border-white/15 text-brand-accent hover:bg-white/10 hover:border-white/25 active:scale-[0.98] transition"
           >
-            Expand
+            {/* Expand icon (no dependency) */}
+            <svg
+              viewBox="0 0 24 24"
+              width="20"
+              height="20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M9 3H3v6" />
+              <path d="M15 21h6v-6" />
+              <path d="M3 3l7 7" />
+              <path d="M21 21l-7-7" />
+            </svg>
           </button>
         ) : null}
       </div>
