@@ -427,7 +427,7 @@ export default function ProcedureClient() {
 
       {/* TITLE ONLY (no extra outer box) */}
       <div className="mx-auto w-full max-w-3xl">
-        <div className="text-3xl font-black text-white tracking-tight align-center">
+        <div className="text-3xl font-black text-white tracking-tight text-center">
           {proc.name}
         </div>
 
