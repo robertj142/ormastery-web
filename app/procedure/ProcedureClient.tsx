@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
-import BackButton from "../components/BackButton";
+import BackButton from "../../components/BackButton";
 
 type Procedure = {
   id: string;
@@ -54,7 +54,6 @@ export default function ProcedureClient() {
 
   const rafRef = useRef<number | null>(null);
   const lastTsRef = useRef<number>(0);
-  const carryRef = useRef<number>(0);
 
   const sectionTitle = useMemo(() => {
     if (!openSection) return "";
@@ -153,7 +152,6 @@ export default function ProcedureClient() {
           draping,
           instruments_trays: instruments,
           workflow_notes: workflow,
-          updated_at: new Date().toISOString(),
         })
         .eq("id", proc.id);
 
@@ -171,7 +169,6 @@ export default function ProcedureClient() {
       rafRef.current = null;
     }
     lastTsRef.current = 0;
-    carryRef.current = 0;
   }
 
   function startAutoScroll() {
@@ -191,34 +188,28 @@ export default function ProcedureClient() {
       if (max <= 0) return;
 
       if (!lastTsRef.current) lastTsRef.current = ts;
-      const dt = ts - lastTsRef.current;
+      const dtMs = ts - lastTsRef.current;
       lastTsRef.current = ts;
 
-      carryRef.current += (autoScrollSpeed * dt) / 1000;
-      const step = Math.floor(carryRef.current);
+      // iPhone issue fix: do NOT floor steps. Use float scroll so slow speeds move immediately.
+      const delta = (autoScrollSpeed * dtMs) / 1000;
+      const next = node.scrollTop + delta;
 
-      if (step >= 1) {
-        carryRef.current -= step;
+      if (next >= max - 1) {
+        node.scrollTop = max;
+        stopAutoScroll();
 
-        const next = node.scrollTop + step;
+        window.setTimeout(() => {
+          const n = scrollRef.current;
+          if (!n) return;
+          n.scrollTop = 0;
+          if (autoScrollOn) startAutoScroll();
+        }, 700);
 
-        if (next >= max - 1) {
-          node.scrollTop = max;
-          stopAutoScroll();
-
-          window.setTimeout(() => {
-            const n = scrollRef.current;
-            if (!n) return;
-            n.scrollTop = 0;
-            if (autoScrollOn) startAutoScroll();
-          }, 700);
-
-          return;
-        }
-
-        node.scrollTop = next;
+        return;
       }
 
+      node.scrollTop = next;
       rafRef.current = requestAnimationFrame(loop);
     };
 
@@ -235,6 +226,7 @@ export default function ProcedureClient() {
       return;
     }
 
+    // Give the modal a tick to mount + layout before measuring scrollHeight
     const t = window.setTimeout(() => {
       if (scrollRef.current) scrollRef.current.scrollTop = 0;
       requestAnimationFrame(() => {
@@ -242,7 +234,7 @@ export default function ProcedureClient() {
           startAutoScroll();
         });
       });
-    }, 0);
+    }, 50);
 
     return () => {
       window.clearTimeout(t);
@@ -251,6 +243,7 @@ export default function ProcedureClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openSection, autoScrollOn, autoScrollSpeed, sectionBody]);
 
+  // Close photo viewer with ESC and allow keyboard nav
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (viewerIndex === null) return;
@@ -403,14 +396,17 @@ export default function ProcedureClient() {
       <div className="min-h-screen p-6">
         <BackButton href={backHref()} />
         <div className="mt-6 font-semibold text-white">Procedure not found.</div>
-        {err ? <div className="mt-2 text-sm text-red-200">Error: {err}</div> : null}
+        {err ? (
+          <div className="mt-2 text-sm text-red-200">Error: {err}</div>
+        ) : null}
       </div>
     );
   }
 
   return (
     <div className="min-h-screen p-6">
-      <div className="flex items-center justify-between mb-6">
+      {/* Top bar */}
+      <div className="flex items-center justify-between mb-5">
         <BackButton href={backHref()} />
 
         <button
@@ -423,100 +419,110 @@ export default function ProcedureClient() {
         </button>
       </div>
 
+      {/* Title is now a TITLE (no extra container box) */}
       <div className="mx-auto w-full max-w-3xl">
-        <div className="bg-white/10 backdrop-blur rounded-3xl border border-white/15 shadow-2xl p-6">
-          <div className="text-2xl font-black text-white mb-6">{proc.name}</div>
+        <div className="text-3xl sm:text-4xl font-black text-white tracking-tight mb-5">
+          {proc.name}
+        </div>
 
-          <div className="space-y-6">
-            <SectionBox title="Draping" onExpand={() => setOpenSection("draping")}>
-              <textarea
-                className="w-full rounded-2xl p-4 min-h-[120px] bg-white/10 border border-white/20 text-white placeholder:text-white/40 outline-none focus:border-white/40"
-                value={draping}
-                onChange={(e) => setDraping(e.target.value)}
-                placeholder="Draping notes..."
-              />
-            </SectionBox>
+        {/* Sections: wider, simpler, fewer nested boxes */}
+        <div className="space-y-5">
+          <SectionBox title="Draping" onExpand={() => setOpenSection("draping")}>
+            <textarea
+              className="w-full rounded-2xl p-4 min-h-[140px] bg-white/10 border border-white/20 text-white placeholder:text-white/40 outline-none focus:border-white/40"
+              value={draping}
+              onChange={(e) => setDraping(e.target.value)}
+              placeholder="Draping notes..."
+            />
+          </SectionBox>
 
-            <SectionBox
-              title="Instruments / Trays"
-              onExpand={() => setOpenSection("instruments")}
-            >
-              <textarea
-                className="w-full rounded-2xl p-4 min-h-[160px] bg-white/10 border border-white/20 text-white placeholder:text-white/40 outline-none focus:border-white/40"
-                value={instruments}
-                onChange={(e) => setInstruments(e.target.value)}
-                placeholder="Instrument and tray notes..."
-              />
-            </SectionBox>
+          <SectionBox
+            title="Instruments / Trays"
+            onExpand={() => setOpenSection("instruments")}
+          >
+            <textarea
+              className="w-full rounded-2xl p-4 min-h-[180px] bg-white/10 border border-white/20 text-white placeholder:text-white/40 outline-none focus:border-white/40"
+              value={instruments}
+              onChange={(e) => setInstruments(e.target.value)}
+              placeholder="Instrument and tray notes..."
+            />
+          </SectionBox>
 
-            <SectionBox title="Workflow / Notes" onExpand={() => setOpenSection("workflow")}>
-              <textarea
-                className="w-full rounded-2xl p-4 min-h-[160px] bg-white/10 border border-white/20 text-white placeholder:text-white/40 outline-none focus:border-white/40"
-                value={workflow}
-                onChange={(e) => setWorkflow(e.target.value)}
-                placeholder="Workflow notes..."
-              />
-            </SectionBox>
+          <SectionBox
+            title="Workflow / Notes"
+            onExpand={() => setOpenSection("workflow")}
+          >
+            <textarea
+              className="w-full rounded-2xl p-4 min-h-[200px] bg-white/10 border border-white/20 text-white placeholder:text-white/40 outline-none focus:border-white/40"
+              value={workflow}
+              onChange={(e) => setWorkflow(e.target.value)}
+              placeholder="Workflow notes..."
+            />
+          </SectionBox>
 
-            <SectionBox title="Setup Photos">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <label className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/15 text-white text-sm font-semibold cursor-pointer">
-                  {uploadingPhotos ? "Uploading..." : "+ Add photos"}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handlePhotoUpload}
-                    className="hidden"
-                    disabled={uploadingPhotos}
-                  />
-                </label>
+          <SectionBox title="Setup Photos">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <label className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/15 text-white text-sm font-semibold cursor-pointer">
+                {uploadingPhotos ? "Uploading..." : "+ Add photos"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                  disabled={uploadingPhotos}
+                />
+              </label>
 
-                <div className="text-sm text-white/70">
-                  {photos.length} photo{photos.length === 1 ? "" : "s"}
-                </div>
+              <div className="text-sm text-white/70">
+                {photos.length} photo{photos.length === 1 ? "" : "s"}
               </div>
+            </div>
 
-              {photos.length === 0 ? (
-                <div className="mt-4 text-sm text-white/70">No setup photos yet.</div>
-              ) : (
-                <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {photos.map((p, idx) => (
-                    <div
-                      key={p.id}
-                      className="relative overflow-hidden rounded-2xl border border-white/15 bg-white/5"
+            {photos.length === 0 ? (
+              <div className="mt-4 text-sm text-white/70">
+                No setup photos yet.
+              </div>
+            ) : (
+              <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {photos.map((p, idx) => (
+                  <div
+                    key={p.id}
+                    className="relative overflow-hidden rounded-2xl border border-white/15 bg-white/5"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setViewerIndex(idx)}
+                      className="block w-full"
+                      aria-label="Open photo"
                     >
-                      <button
-                        type="button"
-                        onClick={() => setViewerIndex(idx)}
-                        className="block w-full"
-                        aria-label="Open photo"
-                      >
-                        <img
-                          src={p.url}
-                          alt="Setup photo"
-                          className="w-full h-32 object-cover"
-                          loading="lazy"
-                        />
-                      </button>
+                      <img
+                        src={p.url}
+                        alt="Setup photo"
+                        className="w-full h-32 object-cover"
+                        loading="lazy"
+                      />
+                    </button>
 
-                      <button
-                        onClick={() => deletePhoto(p)}
-                        disabled={deletingPhotoId === p.id}
-                        className="absolute top-2 right-2 px-3 py-1 rounded-full bg-black/60 text-white text-xs font-semibold disabled:opacity-60"
-                        type="button"
-                      >
-                        {deletingPhotoId === p.id ? "Deleting..." : "Delete"}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </SectionBox>
-          </div>
+                    <button
+                      onClick={() => deletePhoto(p)}
+                      disabled={deletingPhotoId === p.id}
+                      className="absolute top-2 right-2 px-3 py-1 rounded-full bg-black/60 text-white text-xs font-semibold disabled:opacity-60"
+                      type="button"
+                    >
+                      {deletingPhotoId === p.id ? "Deleting..." : "Delete"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </SectionBox>
+
+          <div className="h-6" />
         </div>
       </div>
 
+      {/* Expand text modal */}
       {openSection ? (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-3xl bg-[#06121b]/90 border border-white/10 rounded-3xl shadow-2xl overflow-hidden">
@@ -580,6 +586,7 @@ export default function ProcedureClient() {
         </div>
       ) : null}
 
+      {/* Photo viewer modal */}
       {viewerIndex !== null && activePhoto ? (
         <div
           className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
@@ -635,7 +642,9 @@ export default function ProcedureClient() {
             </div>
 
             {activePhoto.caption ? (
-              <div className="mt-3 text-white/80 text-sm">{activePhoto.caption}</div>
+              <div className="mt-3 text-white/80 text-sm">
+                {activePhoto.caption}
+              </div>
             ) : null}
           </div>
         </div>
@@ -654,9 +663,9 @@ function SectionBox({
   onExpand?: (() => void) | undefined;
 }) {
   return (
-    <div className="rounded-3xl border border-white/15 bg-white/5 p-4">
+    <div className="rounded-3xl border border-white/15 bg-white/5 p-4 sm:p-5">
       <div className="flex items-center justify-between mb-3">
-        <div className="font-black text-white">{title}</div>
+        <div className="font-black text-white text-lg">{title}</div>
 
         {onExpand ? (
           <button
